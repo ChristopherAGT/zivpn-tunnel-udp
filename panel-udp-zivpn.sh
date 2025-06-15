@@ -17,6 +17,9 @@ YELLOW="\033[1;33m"
 CYAN="\033[1;36m"
 RESET="\033[0m"
 
+#limpiar
+clear
+
 # 🛠️ Dependencias
 command -v jq >/dev/null 2>&1 || { echo -e "${RED}❌ jq no está instalado. Usa: apt install jq -y${RESET}"; exit 1; }
 
