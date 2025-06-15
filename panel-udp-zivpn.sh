@@ -135,6 +135,8 @@ restart_service()  { systemctl restart zivpn.service && echo -e "${YELLOW}🔁 S
 
 # 📺 Menú principal
 while true; do
+  clear  # ✅ Limpia la pantalla en cada iteración del menú
+
   [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
 
   echo -e "\n${CYAN}╔═════════════════════════════════════════════════════════════════╗"
