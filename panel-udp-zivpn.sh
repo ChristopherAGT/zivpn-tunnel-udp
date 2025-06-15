@@ -234,7 +234,8 @@ while true; do
 [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
 
 # Obtener datos reales
-IP_MACHINE=$(hostname -I | awk '{print $1}')
+IP_PRIVADA=$(hostname -I | awk '{print $1}')
+IP_PUBLICA=$(curl -s ifconfig.me)
 OS_MACHINE=$(grep -oP '^PRETTY_NAME="\K[^"]+' /etc/os-release)
 ARCH_MACHINE=$(uname -m)
 # Normalizar arquitectura para mostrar AMD o ARM
@@ -251,7 +252,8 @@ echo -e "║                🧩 ZIVPN - PANEL DE USUARIOS-UDP                 �
 echo -e "╠═════════════════════════════════════════════════════════════════╣"
 echo -e "║                         📊 INFORMACIÓN                          ║"
 echo -e "╠═════════════════════════════════════════════════════════════════╣"
-echo -e "${CYAN}║ 📶 IP:           ${GREEN}${IP_MACHINE}${CYAN}                                       ║"
+echo -e "${CYAN}║ 📶 IP Privada:   ${GREEN}${IP_PRIVADA}${CYAN}                                     ║"
+echo -e "${CYAN}║ 🌐 IP Pública:   ${GREEN}${IP_PUBLICA}${CYAN}                                     ║"
 echo -e "${CYAN}║ 🖥️ OS:          ${GREEN}${OS_MACHINE}${CYAN}                             ║"
 echo -e "${CYAN}║ 🧠 Arquitectura: ${GREEN}${ARCH_DISPLAY}${CYAN}                                            ║"
 echo -e "${CYAN}║ 📍 Puerto:       ${GREEN}${PORT}${CYAN}                                           ║"
