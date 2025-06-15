@@ -148,6 +148,7 @@ renew_user() {
 
     if [[ "$id" == "0" ]]; then
       echo -e "${YELLOW}⚠️ Renovación cancelada.${RESET}"
+      read -p "🔙 Presione Enter para volver al menú..."
       return
     fi
 
@@ -179,6 +180,7 @@ renew_user() {
 
   if [[ -z "$old_exp" ]]; then
     echo -e "${RED}❌ No se encontró la fecha de expiración para este usuario.${RESET}"
+    read -p "🔙 Presione Enter para volver al menú..."
     return
   fi
 
