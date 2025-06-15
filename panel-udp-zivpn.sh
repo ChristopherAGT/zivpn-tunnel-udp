@@ -94,6 +94,7 @@ list_users() {
   done < "$USER_DB"
 
   echo -e "${CYAN}╚════╩════════════════════╩═══════════════╩══════════════╝${RESET}\n"
+  read -p "🔙 Presione Enter para volver al menú..."
 }
 
 clean_expired_users() {
