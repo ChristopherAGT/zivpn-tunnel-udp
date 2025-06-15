@@ -17,7 +17,6 @@ YELLOW="\033[1;33m"
 CYAN="\033[1;36m"
 RESET="\033[0m"
 
-#limpiar
 clear
 
 # 🛠️ Dependencias
@@ -76,9 +75,9 @@ renew_user() {
 
 list_users() {
   echo -e "\n${CYAN}📋 LISTA DE USUARIOS REGISTRADOS${RESET}"
-  echo -e "${CYAN}╔════╦════════════════════╦═══════════════╦══════════════╗${RESET}"
-  echo -e "${CYAN}║ ID ║     CONTRASEÑA     ║   EXPIRA      ║   ESTADO     ║${RESET}"
-  echo -e "${CYAN}╠════╬════════════════════╬═══════════════╬══════════════╣${RESET}"
+  echo -e "${CYAN}╔════╦════════════════════╦════════════════╦════════════════╗${RESET}"
+  echo -e "${CYAN}║ ID ║     CONTRASEÑA     ║   EXPIRA       ║     ESTADO     ║${RESET}"
+  echo -e "${CYAN}╠════╬════════════════════╬════════════════╬════════════════╣${RESET}"
 
   i=1
   today=$(date +%Y-%m-%d)
@@ -92,11 +91,11 @@ list_users() {
       status="${GREEN}🟢 ACTIVO${RESET}"
     fi
 
-    printf "${CYAN}║%3s ${CYAN}║ ${YELLOW}%-18s${CYAN} ║ ${YELLOW}%-13s${CYAN} ║ %-12b${CYAN}║${RESET}\n" "$i" "$pass" "$exp" "$status"
+    printf "${CYAN}║%3s ${CYAN}║ ${YELLOW}%-18s${CYAN} ║ ${YELLOW}%-14s${CYAN} ║ %-14b${CYAN}║${RESET}\n" "$i" "$pass" "$exp" "$status"
     ((i++))
   done < "$USER_DB"
 
-  echo -e "${CYAN}╚════╩════════════════════╩═══════════════╩══════════════╝${RESET}\n"
+  echo -e "${CYAN}╚════╩════════════════════╩════════════════╩════════════════╝${RESET}\n"
   read -p "🔙 Presione Enter para volver al menú..."
 }
 
@@ -137,9 +136,9 @@ restart_service()  { systemctl restart zivpn.service && echo -e "${YELLOW}🔁 S
 while true; do
   [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
 
-  echo -e "\n${CYAN}╔═════════════════════════════════════════════════════════════════╗"
+  echo -e "\n${CYAN}╔══════════════════════════════════════════════════════════════════════╗"
   echo -e "║                   🧩 ZIVPN - PANEL DE USUARIOS UDP                   ║"
-  echo -e "╠═════════════════════════════════════════════════════════════════╣"
+  echo -e "╠══════════════════════════════════════════════════════════════════════╣"
   echo -e "║ [1] ➕ Crear nuevo usuario (con expiración)                          ║"
   echo -e "║ [2] ❌ Remover usuario                                               ║"
   echo -e "║ [3] 🔁 Renovar usuario                                               ║"
