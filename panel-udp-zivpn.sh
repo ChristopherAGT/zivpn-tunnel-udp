@@ -33,7 +33,6 @@ mkdir -p /etc/zivpn
 source "$CONF_FILE"
 
 # 📦 Funciones principales
-
 add_user() {
   # Solicitar contraseña y validar que no esté vacía ni exista ya
   while true; do
@@ -74,6 +73,9 @@ add_user() {
 
   # Reiniciar servicio para aplicar cambios
   systemctl restart zivpn.service
+
+  # 🛑 Pausar para mostrar resultado
+  read -p "🔙 Presione Enter para volver al menú..."
 }
 
 remove_user() {
@@ -96,8 +98,11 @@ remove_user() {
   echo -e "${GREEN}🗑️ Usuario eliminado exitosamente.${RESET}"
 
   systemctl restart zivpn.service
+
+  read -p "🔙 Presione Enter para volver al menú..."
 }
 
+renew_user() {
 renew_user() {
   list_users
 
@@ -140,6 +145,8 @@ renew_user() {
   echo -e "${GREEN}🔁 Usuario renovado hasta: $new_exp${RESET}"
 
   systemctl restart zivpn.service
+
+  read -p "🔙 Presione Enter para volver al menú..."
 }
 
 list_users() {
