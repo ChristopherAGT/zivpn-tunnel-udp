@@ -23,7 +23,7 @@ sudo apt-get update && sudo apt-get upgrade -y
 # ╚════════════════════════════════════════════════════════════╝
 echo -e "${CYAN}📥 Descargando binario de ZIVPN...${RESET}"
 systemctl stop zivpn.service &>/dev/null
-wget -q https://github.com/zahidbd2/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64 -O /usr/local/bin/zivpn
+wget -q https://github.com/ChristopherAGT/zivpn-tunnel-udp/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64 -O /usr/local/bin/zivpn
 chmod +x /usr/local/bin/zivpn
 
 echo -e "${CYAN}📁 Preparando configuración...${RESET}"
