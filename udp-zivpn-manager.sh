@@ -22,6 +22,22 @@ else
   ARCH_TEXT="Desconocida"
 fi
 
+# ╔══════════════════════════════════════════════════╗
+# ║ 🔍 FUNCIÓN: Mostrar estado del servicio ZIVPN    ║
+# ╚══════════════════════════════════════════════════╝
+mostrar_estado_servicio() {
+  if [ -f /usr/local/bin/zivpn ] && [ -f /etc/systemd/system/zivpn.service ]; then
+    systemctl is-active --quiet zivpn.service
+    if [ $? -eq 0 ]; then
+      echo -e " 🟢 Servicio ZIVPN UDP instalado y activo"
+    else
+      echo -e " 🟡 Servicio ZIVPN UDP instalado pero ${YELLOW}no activo${RESET}"
+    fi
+  else
+    echo -e " 🔴 Servicio ZIVPN UDP ${RED}no instalado${RESET}"
+  fi
+}
+
 # 🌀 Spinner
 spinner() {
   local pid=$!
@@ -41,7 +57,13 @@ mostrar_menu() {
   echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo -e "           🛠️ ${GREEN}ZIVPN UDP TUNNEL MANAGER${RESET}"
   echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+  # Mostrar arquitectura
   echo -e " 🔍 Arquitectura detectada: ${YELLOW}$ARCH_TEXT${RESET}"
+
+  # Mostrar estado del servicio
+  mostrar_estado_servicio
+
   echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo -e " ${YELLOW}1.${RESET} 🚀 Instalar Servicio UDP (${BLUE}AMD64${RESET})"
   echo -e " ${YELLOW}2.${RESET} 📦 Instalar Servicio UDP (${GREEN}ARM64${RESET})"
@@ -61,6 +83,7 @@ instalar_amd() {
   spinner
   if [[ ! -f install-amd.sh ]]; then
     echo -e "${RED}❌ Error: No se pudo descargar el archivo.${RESET}"
+    read -p "Presiona Enter para continuar..."
     return
   fi
 
@@ -68,7 +91,7 @@ instalar_amd() {
   bash install-amd.sh
   rm -f install-amd.sh
   echo -e "${GREEN}✅ Instalación completada.${RESET}"
-  read -p "Presiona Enter para continuar..." 
+  read -p "Presiona Enter para continuar..."
 }
 
 # ╔══════════════════════════════════════════════════╗
@@ -81,6 +104,7 @@ instalar_arm() {
   spinner
   if [[ ! -f install-arm.sh ]]; then
     echo -e "${RED}❌ Error: No se pudo descargar el archivo.${RESET}"
+    read -p "Presiona Enter para continuar..."
     return
   fi
 
@@ -88,7 +112,7 @@ instalar_arm() {
   bash install-arm.sh
   rm -f install-arm.sh
   echo -e "${GREEN}✅ Instalación completada.${RESET}"
-  read -p "Presiona Enter para continuar..." 
+  read -p "Presiona Enter para continuar..."
 }
 
 # ╔══════════════════════════════════════════════════╗
@@ -101,6 +125,7 @@ desinstalar_udp() {
   spinner
   if [[ ! -f uninstall.sh ]]; then
     echo -e "${RED}❌ Error: No se pudo descargar el archivo.${RESET}"
+    read -p "Presiona Enter para continuar..."
     return
   fi
 
@@ -108,14 +133,14 @@ desinstalar_udp() {
   bash uninstall.sh
   rm -f uninstall.sh
   echo -e "${GREEN}✅ Desinstalación completada.${RESET}"
-  read -p "Presiona Enter para continuar..." 
+  read -p "Presiona Enter para continuar..."
 }
 
 # 🔁 Bucle del menú principal
 while true; do
   clear
   mostrar_menu
-  read opcion
+  read -r opcion
   case $opcion in
     1) instalar_amd ;;
     2) instalar_arm ;;
