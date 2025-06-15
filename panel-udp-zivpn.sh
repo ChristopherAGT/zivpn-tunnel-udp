@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# ╔════════════════════════════════════════════════════════════════════╗
-# ║             🧩 ZIVPN - PANEL DE USUARIOS UDP - v1.0                ║
-# ╚════════════════════════════════════════════════════════════════════╝
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║           🧩 ZIVPN - PANEL DE USUARIOS UDP - v1.0                ║
+# ╚═══════════════════════════════════════════════════════════════════╝
 
 # 📁 Archivos
 CONFIG_FILE="/etc/zivpn/config.json"
@@ -119,31 +119,31 @@ toggle_autoclean() {
 }
 
 # ▶️ Servicio
-start_service() { systemctl start zivpn && echo -e "${GREEN}▶️ Servicio iniciado.${RESET}"; }
-stop_service()  { systemctl stop zivpn && echo -e "${RED}⏹️ Servicio detenido.${RESET}"; }
-restart_service() { systemctl restart zivpn && echo -e "${YELLOW}🔁 Servicio reiniciado.${RESET}"; }
+start_service()    { systemctl start zivpn && echo -e "${GREEN}▶️ Servicio iniciado.${RESET}"; }
+stop_service()     { systemctl stop zivpn && echo -e "${RED}⏹️ Servicio detenido.${RESET}"; }
+restart_service()  { systemctl restart zivpn && echo -e "${YELLOW}🔁 Servicio reiniciado.${RESET}"; }
 
 # 📺 Menú principal
 while true; do
   [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
 
-  echo -e "\n${CYAN}╔═══════════════════════════════════════════════════════╗"
-  echo -e "║             🧩 ZIVPN - PANEL DE USUARIOS UDP          ║"
-  echo -e "╠═══════════════════════════════════════════════════════╣"
-  echo -e "║ [1] ➕ Crear nuevo usuario (con expiración)           ║"
-  echo -e "║ [2] ❌ Remover usuario                                ║"
-  echo -e "║ [3] 🔁 Renovar usuario                                ║"
-  echo -e "║ [4] 📋 Información de los usuarios                    ║"
-  echo -e "║ [5] ▶️ Iniciar servicio                               ║"
-  echo -e "║ [6] 🔁 Reiniciar servicio                             ║"
-  echo -e "║ [7] ⏹️ Detener servicio                               ║"
+  echo -e "\n${CYAN}╔═════════════════════════════════════════════════════════════╗"
+  echo -e "║           🧩 ZIVPN - PANEL DE USUARIOS UDP                ║"
+  echo -e "╠═════════════════════════════════════════════════════════════╣"
+  echo -e "║ [1] ➕ Crear nuevo usuario (con expiración)                ║"
+  echo -e "║ [2] ❌ Remover usuario                                     ║"
+  echo -e "║ [3] 🔁 Renovar usuario                                     ║"
+  echo -e "║ [4] 📋 Información de los usuarios                         ║"
+  echo -e "║ [5] ▶️ Iniciar servicio                                    ║"
+  echo -e "║ [6] 🔁 Reiniciar servicio                                  ║"
+  echo -e "║ [7] ⏹️ Detener servicio                                    ║"
   if [[ "$AUTOCLEAN" == "ON" ]]; then
-    echo -e "║ [8] 🧹 Eliminar usuarios vencidos     [${GREEN}ON${RESET}]        ║"
+    echo -e "║ [8] 🧹 Eliminar usuarios vencidos     [${GREEN}ON${CYAN}]           ║"
   else
-    echo -e "║ [8] 🧹 Eliminar usuarios vencidos     [${RED}OFF${RESET}]         ║"
+    echo -e "║ [8] 🧹 Eliminar usuarios vencidos     [${RED}OFF${CYAN}]          ║"
   fi
-  echo -e "║ [9] 🚪 Salir                                          ║"
-  echo -e "╚═══════════════════════════════════════════════════════╝${RESET}"
+  echo -e "║ [9] 🚪 Salir                                               ║"
+  echo -e "╚═════════════════════════════════════════════════════════════╝${RESET}"
 
   read -p "📌 Seleccione una opción: " opc
   case $opc in
