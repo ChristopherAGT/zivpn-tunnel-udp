@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # ╔════════════════════════════════════════════════════════════════════╗
-# ║       🚀  ZIVPN UDP MODULE INSTALLER                             ║
-# ║       👤 Autor: Zahid Islam                                       ║
-# ║       🛠️ Instala y configura el servicio UDP de ZIVPN           ║
+# ║       🚀 ZIVPN UDP MODULE INSTALLER                                            ║
+# ║       👤 Autor: Zahid Islam                                                    ║
+# ║       👤 Remasterización: ChristopherAGT                                       ║
+# ║       🛠️ Instala y configura el servicio UDP de ZIVPN                          ║
 # ╚════════════════════════════════════════════════════════════════════╝
 
 # Colores para presentación
@@ -116,19 +117,22 @@ EOF
 fi
 
 # ╔════════════════════════════════════════════════════════════════╗
-print_section "🔑 CONFIGURANDO CONTRASEÑAS"
-echo -e "${YELLOW}🔑 Ingresa las contraseñas separadas por comas (Ej: pass1,pass2)"
-read -p "🔐 Contraseñas (por defecto: zivpn): " input_config
+: '
+# ╔════════════════════════════════════════════════════════════════╗
+# print_section "🔑 CONFIGURANDO CONTRASEÑAS"
+# echo -e "${YELLOW}🔑 Ingresa las contraseñas separadas por comas (Ej: pass1,pass2)"
+# read -p "🔐 Contraseñas (por defecto: zivpn): " input_config
 
-if [ -n "$input_config" ]; then
-    IFS=',' read -r -a config <<< "$input_config"
-    [ ${#config[@]} -eq 1 ] && config+=("${config[0]}")
-else
-    config=("zivpn")
-fi
+# if [ -n "$input_config" ]; then
+#     IFS=',' read -r -a config <<< "$input_config"
+#     [ ${#config[@]} -eq 1 ] && config+=("${config[0]}")
+# else
+#     config=("zivpn")
+# fi
 
-new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
-sed -i -E "s/\"config\": ?.*/${new_config_str}/g" /etc/zivpn/config.json
+# new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
+# sed -i -E "s/\"config\": ?.*/${new_config_str}/g" /etc/zivpn/config.json
+'
 
 # ╔════════════════════════════════════════════════════════════════╗
 print_section "🚀 INICIANDO Y HABILITANDO SERVICIO"
@@ -148,7 +152,11 @@ ufw allow 6000:19999/udp
 ufw allow 5667/udp
 
 # ╔════════════════════════════════════════════════════════════════╗
+print_section "⬇️ INSTALANDO PANEL DE GESTIÓN"
+run_with_spinner "⬇️ Descargando panel de gestión (menu-zivpn)" "wget -q https://raw.githubusercontent.com/ChristopherAGT/zivpn-tunnel-udp/main/panel-udp-zivpn.sh -O /usr/local/bin/menu-zivpn && chmod +x /usr/local/bin/menu-zivpn"
+
+# ╔════════════════════════════════════════════════════════════════╗
 print_section "✅ FINALIZADO"
 rm -f install-amd.sh install-amd.tmp install-amd.log &>/dev/null
 echo -e "${GREEN}✅ ZIVPN UDP instalado correctamente.${RESET}"
-echo
+echo -e "${GREEN}🔰 Usa el comando ${CYAN}menu-zivpn${GREEN} para abrir el panel de gestión.${RESET}"
