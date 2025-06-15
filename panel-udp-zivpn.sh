@@ -67,10 +67,13 @@ remove_user() {
   fi
 
   cp "$CONFIG_FILE" "$BACKUP_FILE"
+
   jq --arg pw "$sel_pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
-  grep -v -F -- "^$sel_pass |" "$USER_DB" > temp && mv temp "$USER_DB"
+
+  sed -i "/^$sel_pass[[:space:]]*|/d" "$USER_DB"
 
   echo -e "${GREEN}🗑️ Usuario eliminado exitosamente.${RESET}"
+
   systemctl restart zivpn.service
 }
 
@@ -154,7 +157,7 @@ while true; do
   [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
 
   echo -e "\n${CYAN}╔═════════════════════════════════════════════════════════════════╗"
-  echo -e "║                🧩 ZIVPN - PANEL DE USUARIOS UDP                 ║"
+  echo -e "║                🧩 ZIVPN - PANEL DE USUARIOS-UDP                 ║"
   echo -e "╠═════════════════════════════════════════════════════════════════╣"
   echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)                    ║"
   echo -e "║ [2] ❌  Remover usuario                                         ║"
