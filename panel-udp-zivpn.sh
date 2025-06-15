@@ -148,9 +148,9 @@ while true; do
   echo -e "║ [6] 🔁  Reiniciar servicio                                           ║"
   echo -e "║ [7] ⏹️  Detener servicio                                             ║"
   if [[ "$AUTOCLEAN" == "ON" ]]; then
-    echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${GREEN}ON${RESET}]                ║"
+    echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${GREEN}ON${RESET}]                 ║"
   else
-    echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${RED}OFF${RESET}]                 ║"
+    echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${RED}OFF${RESET}]                  ║"
   fi
   echo -e "║ [9] 🚪  Salir                                                        ║"
   echo -e "╚══════════════════════════════════════════════════════════════════════╝${RESET}"
