@@ -45,6 +45,17 @@ iptables -t nat -D PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to
 rm -f /etc/zivpn-iptables-fix-applied
 
 # ╔════════════════════════════════════════════════════════════╗
+# ║   🧨 ELIMINANDO PANEL DE USUARIOS                          ║
+# ╚════════════════════════════════════════════════════════════╝
+echo -e "${CYAN}🗑️ Eliminando archivos del panel de usuarios...${RESET}"
+rm -f /usr/local/bin/menu-zivpn                   # El comando del panel
+rm -f /etc/zivpn/usuarios.db                      # Base de datos de usuarios
+rm -f /etc/zivpn/autoclean.conf                   # Configuración autoclean
+rm -f /etc/systemd/system/zivpn-autoclean.timer   # Timer (si existe)
+rm -f /etc/systemd/system/zivpn-autoclean.service # Servicio (si existe)
+systemctl daemon-reload &>/dev/null
+
+# ╔════════════════════════════════════════════════════════════╗
 # ║   📋 COMPROBANDO ESTADO FINAL                              ║
 # ╚════════════════════════════════════════════════════════════╝
 if pgrep "zivpn" &>/dev/null; then
@@ -59,6 +70,12 @@ else
     echo -e "${GREEN}✅ Archivos eliminados exitosamente.${RESET}"
 fi
 
+if [ -f /usr/local/bin/menu-zivpn ]; then
+    echo -e "${YELLOW}⚠️  El panel no se eliminó correctamente.${RESET}"
+else
+    echo -e "${GREEN}✅ Panel de usuarios eliminado correctamente.${RESET}"
+fi
+
 # ╔════════════════════════════════════════════════════════════╗
 # ║   🧼 LIMPIEZA DE CACHE Y SWAP                              ║
 # ╚════════════════════════════════════════════════════════════╝
@@ -70,4 +87,4 @@ swapoff -a && swapon -a
 # ╔════════════════════════════════════════════════════════════╗
 # ║   ✅ FINALIZADO                                            ║
 # ╚════════════════════════════════════════════════════════════╝
-echo -e "${GREEN}✅ ZiVPN desinstalado correctamente.${RESET}"
+echo -e "${GREEN}✅ ZiVPN y el panel fueron desinstalados correctamente.${RESET}"
