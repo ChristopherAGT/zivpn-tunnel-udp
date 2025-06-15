@@ -28,7 +28,7 @@ chmod +x /usr/local/bin/zivpn
 
 echo -e "${CYAN}📁 Preparando directorio de configuración...${RESET}"
 mkdir -p /etc/zivpn
-wget -q https://raw.githubusercontent.com/zahidbd2/udp-zivpn/main/config.json -O /etc/zivpn/config.json
+wget -q https://raw.githubusercontent.com/ChristopherAGT/zivpn-tunnel-udp/main/config.json -O /etc/zivpn/config.json
 
 # ╔════════════════════════════════════════════════════════════╗
 # ║  🔐 GENERANDO CERTIFICADOS SSL                             ║
