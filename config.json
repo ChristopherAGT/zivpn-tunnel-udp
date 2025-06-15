@@ -5,6 +5,6 @@
    "obfs":"zivpn",
    "auth": {
     "mode": "passwords", 
-    "config": ["zi"]
+    "config": ["zivpn"]
   }
 }
