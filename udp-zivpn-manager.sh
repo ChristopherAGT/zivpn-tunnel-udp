@@ -187,15 +187,15 @@ desinstalar_udp() {
 fix_iptables_zivpn() {
   clear
   echo -e "${CYAN}🔧 Aplicando fix persistente iptables para ZIVPN...${RESET}"
-  wget -q https://raw.githubusercontent.com/ChristopherAGT/zivpn-tunnel-udp/main/zivpn-iptables-fix -O zivpn-iptables-fix
-  if [[ ! -f zivpn-iptables-fix ]]; then
+  wget -q https://raw.githubusercontent.com/ChristopherAGT/zivpn-tunnel-udp/main/zivpn-iptables-fix.sh -O zivpn-iptables-fix.sh
+  if [[ ! -f zivpn-iptables-fix.sh ]]; then
     echo -e "${RED}❌ Error: No se pudo descargar el fix.${RESET}"
     read -p "Presiona Enter para continuar..."
     return
   fi
-  bash zivpn-iptables-fix
+  bash zivpn-iptables-fix.sh
   local res=$?
-  rm -f zivpn-iptables-fix
+  rm -f zivpn-iptables-fix.sh
   if [[ $res -eq 0 ]]; then
     # Crear archivo indicador para ON
     touch /etc/zivpn-iptables-fix-applied 2>/dev/null || echo -e "${YELLOW}⚠️ No se pudo crear archivo indicador de estado.${RESET}"
