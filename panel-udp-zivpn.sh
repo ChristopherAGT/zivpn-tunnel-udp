@@ -35,23 +35,44 @@ source "$CONF_FILE"
 # 📦 Funciones principales
 
 add_user() {
+  # Solicitar contraseña y validar que no esté vacía ni exista ya
   while true; do
-  read -p "🔐 Ingrese la nueva contraseña: " pass
-  [[ -z "$pass" ]] && echo -e "${RED}❌ La contraseña no puede estar vacía.${RESET}" || break
-done
-  if jq -e --arg pw "$pass" '.auth.config | index($pw)' "$CONFIG_FILE" > /dev/null; then
-    echo -e "${RED}❌ La contraseña ya existe.${RESET}"
-    return
-  fi
+    read -p "🔐 Ingrese la nueva contraseña: " pass
+    if [[ -z "$pass" ]]; then
+      echo -e "${RED}❌ La contraseña no puede estar vacía.${RESET}"
+      continue
+    fi
+    if jq -e --arg pw "$pass" '.auth.config | index($pw)' "$CONFIG_FILE" > /dev/null; then
+      echo -e "${RED}❌ La contraseña ya existe.${RESET}"
+      continue
+    fi
+    break
+  done
+
+  # Solicitar días de expiración y validar que sea número positivo
   while true; do
-  read -p "📅 Días de expiración: " days
-  [[ "$days" =~ ^[0-9]+$ ]] && break || echo -e "${RED}❌ Ingrese un número válido.${RESET}"
-done
+    read -p "📅 Días de expiración: " days
+    if [[ ! "$days" =~ ^[0-9]+$ ]] || [[ "$days" -le 0 ]]; then
+      echo -e "${RED}❌ Ingrese un número válido y positivo.${RESET}"
+    else
+      break
+    fi
+  done
+
   exp_date=$(date -d "+$days days" +%Y-%m-%d)
+
+  # Crear backup antes de modificar
   cp "$CONFIG_FILE" "$BACKUP_FILE"
+
+  # Añadir usuario a la configuración JSON
   jq --arg pw "$pass" '.auth.config += [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
+
+  # Añadir usuario a la base de datos con formato uniforme
   echo "$pass | $exp_date" >> "$USER_DB"
+
   echo -e "${GREEN}✅ Usuario añadido con expiración: $exp_date${RESET}"
+
+  # Reiniciar servicio para aplicar cambios
   systemctl restart zivpn.service
 }
 
@@ -79,14 +100,45 @@ remove_user() {
 
 renew_user() {
   list_users
-  read -p "🔢 ID del usuario a renovar: " id
-  sel_pass=$(awk -F' | ' "NR==$id{print \$1}" "$USER_DB")
-  [ -z "$sel_pass" ] && echo -e "${RED}❌ ID inválido.${RESET}" && return
-  read -p "📅 Días adicionales: " days
-  old_exp=$(awk -F' | ' "\$1==\"$sel_pass\"{print \$3}" "$USER_DB")
+
+  # Validar ID válido
+  while true; do
+    read -p "🔢 ID del usuario a renovar: " id
+    if [[ ! "$id" =~ ^[0-9]+$ ]]; then
+      echo -e "${RED}❌ Por favor ingrese un número válido.${RESET}"
+    else
+      sel_pass=$(sed -n "${id}p" "$USER_DB" | cut -d'|' -f1 | xargs)
+      if [[ -z "$sel_pass" ]]; then
+        echo -e "${RED}❌ ID inválido o no existe.${RESET}"
+      else
+        break
+      fi
+    fi
+  done
+
+  # Validar días adicionales
+  while true; do
+    read -p "📅 Días adicionales: " days
+    if [[ ! "$days" =~ ^[0-9]+$ ]] || [[ "$days" -le 0 ]]; then
+      echo -e "${RED}❌ Ingrese un número positivo válido.${RESET}"
+    else
+      break
+    fi
+  done
+
+  old_exp=$(sed -n "/^$sel_pass[[:space:]]*|/p" "$USER_DB" | cut -d'|' -f2 | xargs)
+  if [[ -z "$old_exp" ]]; then
+    echo -e "${RED}❌ No se encontró la fecha de expiración para este usuario.${RESET}"
+    return
+  fi
+
   new_exp=$(date -d "$old_exp +$days days" +%Y-%m-%d)
-  sed -i "s/^$sel_pass |.*/$sel_pass | $new_exp/" "$USER_DB"
+
+  # Actualizar fecha en USER_DB
+  sed -i "s/^$sel_pass[[:space:]]*|.*/$sel_pass | $new_exp/" "$USER_DB"
+
   echo -e "${GREEN}🔁 Usuario renovado hasta: $new_exp${RESET}"
+
   systemctl restart zivpn.service
 }
 
@@ -157,7 +209,7 @@ while true; do
   [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
 
   echo -e "\n${CYAN}╔═════════════════════════════════════════════════════════════════╗"
-  echo -e "║                🧩 ZIVPN - PANEL DE USUARIOS-UDP                 ║"
+  echo -e "║                🧩 ZIVPN - PANEL DE USUARIOS UDP                 ║"
   echo -e "╠═════════════════════════════════════════════════════════════════╣"
   echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)                    ║"
   echo -e "║ [2] ❌  Remover usuario                                         ║"
