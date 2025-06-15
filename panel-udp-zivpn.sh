@@ -35,12 +35,18 @@ source "$CONF_FILE"
 # 📦 Funciones principales
 
 add_user() {
+  while true; do
   read -p "🔐 Ingrese la nueva contraseña: " pass
+  [[ -z "$pass" ]] && echo -e "${RED}❌ La contraseña no puede estar vacía.${RESET}" || break
+done
   if jq -e --arg pw "$pass" '.auth.config | index($pw)' "$CONFIG_FILE" > /dev/null; then
     echo -e "${RED}❌ La contraseña ya existe.${RESET}"
     return
   fi
+  while true; do
   read -p "📅 Días de expiración: " days
+  [[ "$days" =~ ^[0-9]+$ ]] && break || echo -e "${RED}❌ Ingrese un número válido.${RESET}"
+done
   exp_date=$(date -d "+$days days" +%Y-%m-%d)
   cp "$CONFIG_FILE" "$BACKUP_FILE"
   jq --arg pw "$pass" '.auth.config += [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
@@ -97,7 +103,8 @@ list_users() {
   done < "$USER_DB"
 
   echo -e "${CYAN}╚════╩══════════════════════╩══════════════════╩══════════════════╝${RESET}\n"
-  read -p "🔙 Presione Enter para volver al menú..."
+  # Solo mostrar pausa si se llama con argumento true
+  [[ "$1" == "true" ]] && read -p "🔙 Presione Enter para volver al menú..."
 }
 
 clean_expired_users() {
@@ -162,7 +169,7 @@ while true; do
     1) add_user;;
     2) remove_user;;
     3) renew_user;;
-    4) list_users;;
+    4) list_users true;;
     5) start_service;;
     6) restart_service;;
     7) stop_service;;
