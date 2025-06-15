@@ -1,195 +1,127 @@
 #!/bin/bash
 
 # ╔════════════════════════════════════════════════════════════════════╗
-# ║        🛡️ ZIVPN - PANEL DE GESTIÓN DE USUARIOS (PASSWORD)         ║
+# ║       🚀  ZIVPN UDP MODULE INSTALLER                             ║
+# ║       👤 Autor: Zahid Islam                                       ║
+# ║       🛠️ Instala y configura el servicio UDP de ZIVPN           ║
 # ╚════════════════════════════════════════════════════════════════════╝
 
-# 🎨 Colores
-RED="\e[31m"; GREEN="\e[32m"; YELLOW="\e[33m"; CYAN="\e[36m"; BLUE="\e[34m"; RESET="\e[0m"
+# Colores para presentación
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+CYAN="\033[1;36m"
+RED="\033[1;31m"
+MAGENTA="\033[1;35m"
+RESET="\033[0m"
 
-# 📁 Rutas
-DB="/etc/zivpn/usuarios.db"
-CONFIG="/etc/zivpn/config.json"
-AUTO_CLEAN_FILE="/etc/zivpn/auto-clean.conf"
+# Función para imprimir sección con borde
+print_section() {
+  local title="$1"
+  echo -e "${MAGENTA}╔════════════════════════════════════════════════════════════════╗${RESET}"
+  echo -e "${MAGENTA}║  $title${RESET}$(printf ' %.0s' {1..$(($(tput cols)-${#title}-4))})${MAGENTA}║${RESET}"
+  echo -e "${MAGENTA}╚════════════════════════════════════════════════════════════════╝${RESET}"
+}
+
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "🔍 VERIFICANDO INSTALACIÓN PREVIA DE ZIVPN UDP"
+if [ -f /usr/local/bin/zivpn ] || [ -f /etc/systemd/system/zivpn.service ]; then
+  echo -e "${YELLOW}⚠️  ZIVPN UDP parece estar ya instalado en este sistema.${RESET}"
+  echo -e "${YELLOW}Por seguridad, la instalación se detendrá para evitar sobrescribir.${RESET}"
+  exit 1
+fi
+
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "📦 ACTUALIZANDO EL SISTEMA"
+echo -e "${CYAN}🔄 Actualizando paquetes del sistema...${RESET}"
+sudo apt-get update && sudo apt-get upgrade -y
+
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "⬇️ DESCARGANDO ZIVPN UDP"
+echo -e "${CYAN}📥 Descargando binario de ZIVPN...${RESET}"
+systemctl stop zivpn.service &>/dev/null
+wget -q https://github.com/ChristopherAGT/zivpn-tunnel-udp/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64 -O /usr/local/bin/zivpn
+chmod +x /usr/local/bin/zivpn
+
+echo -e "${CYAN}📁 Preparando configuración...${RESET}"
 mkdir -p /etc/zivpn
-[ ! -f "$DB" ] && touch "$DB"
-[ ! -f "$CONFIG" ] && echo '{"config":[]}' > "$CONFIG"
-[ ! -f "$AUTO_CLEAN_FILE" ] && echo "OFF" > "$AUTO_CLEAN_FILE"
+wget -q https://raw.githubusercontent.com/ChristopherAGT/zivpn-tunnel-udp/main/config.json -O /etc/zivpn/config.json
 
-# 🔄 Actualizar config.json
-actualizar_config() {
-    local usuarios=()
-    local now=$(date +%s)
-    while IFS='|' read -r usuario exp; do
-        exp_ts=$(date -d "$exp" +%s 2>/dev/null)
-        [ "$exp_ts" -gt "$now" ] && usuarios+=("\"$usuario\"")
-    done < "$DB"
-    echo -e "{\n  \"config\": [$(IFS=,; echo "${usuarios[*]}")]\n}" > "$CONFIG"
-    systemctl restart zivpn.service &>/dev/null
-}
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "🔐 GENERANDO CERTIFICADOS SSL"
+echo -e "${CYAN}🔐 Generando certificados SSL...${RESET}"
+openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
+-subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=zivpn" \
+-keyout "/etc/zivpn/zivpn.key" -out "/etc/zivpn/zivpn.crt"
 
-# 📋 Mostrar usuarios (decorado)
-mostrar_usuarios() {
-    local now=$(date +%s)
-    echo -e "\n${CYAN}📋 Lista de usuarios registrados:${RESET}"
-    printf "${BLUE}╔════════════╦══════════════╦═══════════╗\n"
-    printf "║  Usuario   ║  Expira      ║  Estado   ║\n"
-    printf "╠════════════╬══════════════╬═══════════╣${RESET}\n"
-    while IFS='|' read -r usuario exp; do
-        exp_ts=$(date -d "$exp" +%s 2>/dev/null)
-        estado=$([ "$exp_ts" -gt "$now" ] && echo "${GREEN}Activo${RESET}" || echo "${RED}Vencido${RESET}")
-        printf "║ %-10s ║ %-12s ║ %-9b ║\n" "$usuario" "$exp" "$estado"
-    done < "$DB"
-    printf "${BLUE}╚════════════╩══════════════╩═══════════╝${RESET}\n"
-}
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "⚙️ OPTIMIZANDO PARÁMETROS DEL SISTEMA"
+sysctl -w net.core.rmem_max=16777216 &>/dev/null
+sysctl -w net.core.wmem_max=16777216 &>/dev/null
 
-# ➕ Crear usuario
-crear_usuario() {
-    echo -e "${YELLOW}➕ Crear nuevo usuario:${RESET}"
-    read -rp "👤 Usuario (será la contraseña): " usuario
-    [ -z "$usuario" ] && { echo -e "${RED}⚠️ Usuario vacío.${RESET}"; return; }
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "🧩 CREANDO SERVICIO SYSTEMD"
+if [ -f /etc/systemd/system/zivpn.service ]; then
+    echo -e "${YELLOW}⚠️ El servicio ZIVPN ya existe. Se omitirá su creación.${RESET}"
+else
+    echo -e "${CYAN}🔧 Configurando servicio systemd...${RESET}"
+    cat <<EOF > /etc/systemd/system/zivpn.service
+[Unit]
+Description=ZIVPN UDP VPN Server
+After=network.target
 
-    read -rp "⏳ Días de duración: " dias
-    [[ ! "$dias" =~ ^[0-9]+$ ]] && { echo -e "${RED}⚠️ Días inválidos.${RESET}"; return; }
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/etc/zivpn
+ExecStart=/usr/local/bin/zivpn server -c /etc/zivpn/config.json
+Restart=always
+RestartSec=3
+Environment=ZIVPN_LOG_LEVEL=info
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+NoNewPrivileges=true
 
-    exp=$(date -d "+$dias days" +"%d-%m-%Y")
-    cp "$DB" "$DB.bak"
-    echo "$usuario|$exp" >> "$DB"
-    [ "$(cat $AUTO_CLEAN_FILE)" == "ON" ] && limpiar_vencidos_silencioso
-    actualizar_config
-    echo -e "${GREEN}✅ Usuario '$usuario' creado hasta $exp.${RESET}"
-    mostrar_usuarios
-}
+[Install]
+WantedBy=multi-user.target
+EOF
+fi
 
-# ❌ Remover usuario
-remover_usuario() {
-    mostrar_usuarios
-    echo -e "${YELLOW}❌ Ingrese el usuario a eliminar:${RESET}"
-    read -rp "🗑️ Usuario: " target
-    [ "$target" == "0" ] && return
-    if grep -q "^$target|" "$DB"; then
-        cp "$DB" "$DB.bak"
-        sed -i "/^$target|/d" "$DB"
-        actualizar_config
-        echo -e "${GREEN}✅ Usuario eliminado.${RESET}"
-    else
-        echo -e "${RED}⚠️ Usuario no encontrado.${RESET}"
-    fi
-    mostrar_usuarios
-}
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "🔑 CONFIGURANDO CONTRASEÑAS"
+echo -e "${YELLOW}🔑 Ingresa las contraseñas separadas por comas (Ej: pass1,pass2)"
+read -p "🔐 Contraseñas (por defecto: zivpn): " input_config
 
-# 🔁 Renovar usuario
-renovar_usuario() {
-    mostrar_usuarios
-    echo -e "${YELLOW}🔁 Ingrese el usuario a renovar:${RESET}"
-    read -rp "👤 Usuario: " target
-    if grep -q "^$target|" "$DB"; then
-        read -rp "📅 Nuevos días de duración: " dias
-        [[ ! "$dias" =~ ^[0-9]+$ ]] && { echo -e "${RED}⚠️ Días inválidos.${RESET}"; return; }
-        new_exp=$(date -d "+$dias days" +"%d-%m-%Y")
-        cp "$DB" "$DB.bak"
-        sed -i "/^$target|/d" "$DB"
-        echo "$target|$new_exp" >> "$DB"
-        [ "$(cat $AUTO_CLEAN_FILE)" == "ON" ] && limpiar_vencidos_silencioso
-        actualizar_config
-        echo -e "${GREEN}✅ Usuario renovado hasta $new_exp.${RESET}"
-    else
-        echo -e "${RED}⚠️ Usuario no encontrado.${RESET}"
-    fi
-    mostrar_usuarios
-}
+if [ -n "$input_config" ]; then
+    IFS=',' read -r -a config <<< "$input_config"
+    # Por si sólo pusieron una contraseña la duplicamos para evitar error
+    [ ${#config[@]} -eq 1 ] && config+=("${config[0]}")
+else
+    config=("zivpn")
+fi
 
-# 🧹 Limpiar vencidos manual
-limpiar_vencidos() {
-    local now=$(date +%s)
-    cp "$DB" "$DB.bak"
-    awk -F'|' -v now="$now" '{
-        cmd="date -d "$2" +%s"; cmd | getline t; close(cmd);
-        if(t>now) print
-    }' "$DB.bak" > "$DB"
-    actualizar_config
-    echo -e "${GREEN}🧹 Usuarios vencidos eliminados.${RESET}"
-    mostrar_usuarios
-}
+new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
+# Corregimos la línea dentro del config.json (asegúrate que la expresión sed funcione correctamente)
+sed -i -E "s/\"config\": ?.*/${new_config_str}/g" /etc/zivpn/config.json
 
-# 🧹 Limpieza silenciosa
-limpiar_vencidos_silencioso() {
-    local now=$(date +%s)
-    awk -F'|' -v now="$now" '{
-        cmd="date -d "$2" +%s"; cmd | getline t; close(cmd);
-        if(t>now) print
-    }' "$DB" > "$DB.tmp" && mv "$DB.tmp" "$DB"
-}
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "🚀 INICIANDO Y HABILITANDO SERVICIO"
+systemctl enable zivpn.service
+systemctl start zivpn.service
 
-# 🔄 Alternar limpieza automática
-toggle_auto_clean() {
-    estado=$(cat "$AUTO_CLEAN_FILE")
-    if [ "$estado" == "OFF" ]; then
-        echo "ON" > "$AUTO_CLEAN_FILE"
-        echo -e "${GREEN}✅ Limpieza automática activada.${RESET}"
-    else
-        echo "OFF" > "$AUTO_CLEAN_FILE"
-        echo -e "${YELLOW}🔕 Limpieza automática desactivada.${RESET}"
-    fi
-}
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "🌐 CONFIGURANDO IPTABLES Y FIREWALL"
+iface=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)
+if ! iptables -t nat -C PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667 &>/dev/null; then
+    iptables -t nat -A PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+else
+    echo -e "${YELLOW}⚠️ La regla iptables ya existe. Se omite agregarla nuevamente.${RESET}"
+fi
 
-# ▶️ Iniciar servicio
-iniciar_servicio() {
-    systemctl start zivpn.service && echo -e "${GREEN}✅ Servicio iniciado.${RESET}" || echo -e "${RED}❌ Error al iniciar.${RESET}"
-}
+ufw allow 6000:19999/udp
+ufw allow 5667/udp
 
-# 🔁 Reiniciar servicio
-reiniciar_servicio() {
-    systemctl restart zivpn.service && echo -e "${GREEN}✅ Servicio reiniciado.${RESET}" || echo -e "${RED}❌ Error al reiniciar.${RESET}"
-}
-
-# ⏹️ Detener servicio
-detener_servicio() {
-    systemctl stop zivpn.service && echo -e "${GREEN}✅ Servicio detenido.${RESET}" || echo -e "${RED}❌ Error al detener.${RESET}"
-}
-
-# 🧭 Menú principal
-while true; do
-    vencidos=$(awk -F'|' -v now=$(date +%s) '{cmd="date -d "$2" +%s"; cmd | getline t; close(cmd); if(t<now) c++} END{print c}' "$DB")
-    estado_clean=$(cat "$AUTO_CLEAN_FILE")
-    estado_text=$([ "$estado_clean" == "ON" ] && echo "${GREEN}[ON]${RESET}" || echo "${RED}[OFF]${RESET}")
-
-    echo -e "\n${BLUE}
-╔═══════════════════════════════════════════════════════╗
-║             🧩 ZIVPN - PANEL DE USUARIOS UDP           ║
-╠═══════════════════════════════════════════════════════╣
-║ [1] ➕ Crear nuevo usuario (con expiración)            ║
-║ [2] ❌ Remover usuario                                 ║
-║ [3] 🔁 Renovar usuario                                 ║
-║ [4] 📋 Ver usuarios actuales                           ║
-║ [5] ▶️ Iniciar servicio                                ║
-║ [6] 🔁 Reiniciar servicio                              ║
-║ [7] ⏹️ Detener servicio                               ║
-║ [8] 🧹 Limpiar usuarios vencidos   $estado_text         ║
-║ [9] 🚪 Salir                                           ║
-╚═══════════════════════════════════════════════════════╝${RESET}"
-    [ "$vencidos" -gt 0 ] && echo -e "${YELLOW}⚠️ Hay $vencidos usuario(s) vencido(s).${RESET}"
-    read -rp $'\n📤 Seleccione una opción [1-9]: ' opcion
-    case $opcion in
-        1) crear_usuario ;;
-        2) remover_usuario ;;
-        3) renovar_usuario ;;
-        4) mostrar_usuarios; read -rp "🔙 Presione Enter para continuar..." ;;
-        5) iniciar_servicio ;;
-        6) reiniciar_servicio ;;
-        7) detener_servicio ;;
-        8)
-            echo -e "\n${CYAN}¿Qué desea hacer?${RESET}"
-            echo "1) 🧹 Limpiar usuarios vencidos manualmente"
-            echo "2) 🔄 Alternar limpieza automática (ON/OFF)"
-            read -rp "Seleccione [1-2]: " subopt
-            case $subopt in
-                1) limpiar_vencidos ;;
-                2) toggle_auto_clean ;;
-                *) echo -e "${RED}❌ Opción inválida.${RESET}" ;;
-            esac
-            ;;
-        9) echo -e "${YELLOW}👋 Saliendo... Hasta pronto.${RESET}"; exit 0 ;;
-        *) echo -e "${RED}❌ Opción inválida.${RESET}" ;;
-    esac
-done
+# ╔════════════════════════════════════════════════════════════════╗
+print_section "✅ FINALIZADO"
+rm -f install-amd.sh install-amd.tmp install-amd.log &>/dev/null
+echo -e "${GREEN}✅ ZIVPN UDP instalado correctamente.${RESET}"
+echo
