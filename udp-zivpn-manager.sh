@@ -23,36 +23,28 @@ else
 fi
 
 # ╔══════════════════════════════════════════════════╗
-# ║ 🔍 FUNCIÓN: Mostrar puerto(s) usados por zivpn    ║
+# ║ 🔍 FUNCIÓN: Mostrar puertos usados por zivpn      ║
 # ╚══════════════════════════════════════════════════╝
-mostrar_puerto_zivpn() {
+mostrar_puertos_zivpn() {
   # Obtener PID del proceso zivpn si está corriendo
   PID=$(pgrep -f /usr/local/bin/zivpn)
   if [[ -z "$PID" ]]; then
-    echo -e " Puerto: ${RED}No se pudo detectar proceso zivpn.${RESET}"
+    echo -e " Puertos: ${RED}No se pudo detectar proceso zivpn.${RESET}"
     return
   fi
 
   # Usar ss si está disponible
   if command -v ss &>/dev/null; then
-    PUERTOS=$(ss -tulnp | grep "$PID" | awk '{print $5}' | cut -d':' -f2 | sort -u)
+    PUERTOS=$(ss -tulnp | grep "$PID" | awk '{print $5}' | cut -d':' -f2 | sort -u | tr '\n' ',' | sed 's/,$//')
   else
     # fallback a netstat
-    PUERTOS=$(netstat -tulnp 2>/dev/null | grep "$PID" | awk '{print $4}' | rev | cut -d':' -f1 | rev | sort -u)
+    PUERTOS=$(netstat -tulnp 2>/dev/null | grep "$PID" | awk '{print $4}' | rev | cut -d':' -f1 | rev | sort -u | tr '\n' ',' | sed 's/,$//')
   fi
 
   if [[ -z "$PUERTOS" ]]; then
-    echo -e " Puerto: ${YELLOW}No se detectaron puertos abiertos.${RESET}"
+    echo -e " Puertos: ${YELLOW}No se detectaron puertos abiertos.${RESET}"
   else
-    # Contar cuántos puertos hay para decidir singular/plural
-    COUNT=$(echo "$PUERTOS" | wc -l)
-    if [[ $COUNT -eq 1 ]]; then
-      echo -e " Puerto: ${GREEN}$PUERTOS${RESET}"
-    else
-      # Si hay más de uno, mostrarlos separados por coma pero con texto singular
-      PUERTOS_LIST=$(echo "$PUERTOS" | tr '\n' ',' | sed 's/,$//')
-      echo -e " Puerto: ${GREEN}$PUERTOS_LIST${RESET}"
-    fi
+    echo -e " Puertos: ${GREEN}$PUERTOS${RESET}"
   fi
 }
 
@@ -64,7 +56,7 @@ mostrar_estado_servicio() {
     systemctl is-active --quiet zivpn.service
     if [ $? -eq 0 ]; then
       echo -e " 🟢 Servicio ZIVPN UDP instalado y activo"
-      mostrar_puerto_zivpn
+      mostrar_puertos_zivpn
     else
       echo -e " 🟡 Servicio ZIVPN UDP instalado pero ${YELLOW}no activo${RESET}"
     fi
