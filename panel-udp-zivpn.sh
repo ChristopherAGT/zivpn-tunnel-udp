@@ -17,6 +17,7 @@ YELLOW="\033[1;33m"
 CYAN="\033[1;36m"
 RESET="\033[0m"
 
+# 🧽 Limpiar pantalla
 clear
 
 # 🛠️ Dependencias
@@ -75,9 +76,9 @@ renew_user() {
 
 list_users() {
   echo -e "\n${CYAN}📋 LISTA DE USUARIOS REGISTRADOS${RESET}"
-  echo -e "${CYAN}╔════╦════════════════════╦════════════════╦════════════════╗${RESET}"
-  echo -e "${CYAN}║ ID ║     CONTRASEÑA     ║   EXPIRA       ║     ESTADO     ║${RESET}"
-  echo -e "${CYAN}╠════╬════════════════════╬════════════════╬════════════════╣${RESET}"
+  echo -e "${CYAN}╔════╦══════════════════════╦══════════════════╦══════════════════╗${RESET}"
+  echo -e "${CYAN}║ ID ║     CONTRASEÑA       ║     EXPIRA       ║     ESTADO       ║${RESET}"
+  echo -e "${CYAN}╠════╬══════════════════════╬══════════════════╬══════════════════╣${RESET}"
 
   i=1
   today=$(date +%Y-%m-%d)
@@ -86,16 +87,16 @@ list_users() {
     exp=$(echo "$exp" | xargs)
 
     if [[ "$exp" < "$today" ]]; then
-      status="${RED}🔴 VENCIDO${RESET}"
+      status="🔴 VENCIDO"
     else
-      status="${GREEN}🟢 ACTIVO${RESET}"
+      status="🟢 ACTIVO"
     fi
 
-    printf "${CYAN}║%3s ${CYAN}║ ${YELLOW}%-18s${CYAN} ║ ${YELLOW}%-14s${CYAN} ║ %-14b${CYAN}║${RESET}\n" "$i" "$pass" "$exp" "$status"
+    printf "${CYAN}║ %2s ║ ${YELLOW}%-20s${CYAN} ║ ${YELLOW}%-16s${CYAN} ║ ${YELLOW}%-14s${CYAN} ║${RESET}\n" "$i" "$pass" "$exp" "$status"
     ((i++))
   done < "$USER_DB"
 
-  echo -e "${CYAN}╚════╩════════════════════╩════════════════╩════════════════╝${RESET}\n"
+  echo -e "${CYAN}╚════╩══════════════════════╩══════════════════╩══════════════════╝${RESET}\n"
   read -p "🔙 Presione Enter para volver al menú..."
 }
 
@@ -139,19 +140,19 @@ while true; do
   echo -e "\n${CYAN}╔══════════════════════════════════════════════════════════════════════╗"
   echo -e "║                   🧩 ZIVPN - PANEL DE USUARIOS UDP                   ║"
   echo -e "╠══════════════════════════════════════════════════════════════════════╣"
-  echo -e "║ [1] ➕ Crear nuevo usuario (con expiración)                          ║"
-  echo -e "║ [2] ❌ Remover usuario                                               ║"
-  echo -e "║ [3] 🔁 Renovar usuario                                               ║"
-  echo -e "║ [4] 📋 Información de los usuarios                                   ║"
-  echo -e "║ [5] ▶️ Iniciar servicio                                              ║"
-  echo -e "║ [6] 🔁 Reiniciar servicio                                            ║"
-  echo -e "║ [7] ⏹️ Detener servicio                                              ║"
+  echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)                          ║"
+  echo -e "║ [2] ❌  Remover usuario                                               ║"
+  echo -e "║ [3] 🔁  Renovar usuario                                               ║"
+  echo -e "║ [4] 📋  Información de los usuarios                                   ║"
+  echo -e "║ [5] ▶️  Iniciar servicio                                              ║"
+  echo -e "║ [6] 🔁  Reiniciar servicio                                            ║"
+  echo -e "║ [7] ⏹️  Detener servicio                                              ║"
   if [[ "$AUTOCLEAN" == "ON" ]]; then
-    echo -e "║ [8] 🧹 Eliminar usuarios vencidos            [${GREEN}ON${RESET}]                ║"
+    echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${GREEN}ON${RESET}]               ║"
   else
-    echo -e "║ [8] 🧹 Eliminar usuarios vencidos            [${RED}OFF${RESET}]               ║"
+    echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${RED}OFF${RESET}]              ║"
   fi
-  echo -e "║ [9] 🚪 Salir                                                       ║"
+  echo -e "║ [9] 🚪  Salir                                                       ║"
   echo -e "╚══════════════════════════════════════════════════════════════════════╝${RESET}"
 
   read -p "📌 Seleccione una opción: " opc
