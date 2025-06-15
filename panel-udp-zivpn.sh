@@ -283,3 +283,4 @@ case $opc in
   9) exit;;
   *) echo -e "${RED}❌ Opción inválida.${RESET}";;
 esac
+done
