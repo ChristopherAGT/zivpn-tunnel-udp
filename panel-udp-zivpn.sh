@@ -103,7 +103,6 @@ remove_user() {
 }
 
 renew_user() {
-renew_user() {
   list_users
 
   # Validar ID válido
