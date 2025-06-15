@@ -22,6 +22,39 @@ print_section() {
   echo -e "${MAGENTA}╚════════════════════════════════════════════════════════════════╝${RESET}"
 }
 
+# Función para mostrar spinner y manejar errores
+run_with_spinner() {
+  local msg="$1"
+  local cmd="$2"
+
+  echo -ne "${CYAN}${msg}...${RESET}"
+  bash -c "$cmd" &>/tmp/zivpn_spinner.log &
+  local pid=$!
+
+  local delay=0.1
+  local spinstr='|/-\'
+  while kill -0 $pid 2>/dev/null; do
+    local temp=${spinstr#?}
+    printf " [%c]  " "$spinstr"
+    local spinstr=$temp${spinstr%"$temp"}
+    sleep $delay
+    printf "\b\b\b\b\b\b"
+  done
+  wait $pid
+  local exit_code=$?
+
+  if [ $exit_code -eq 0 ]; then
+    echo -e " ${GREEN}✔️${RESET}"
+  else
+    echo -e " ${RED}❌ Error${RESET}"
+    echo -e "${RED}🛑 Ocurrió un error al ejecutar:${RESET} ${YELLOW}$msg${RESET}"
+    echo -e "${RED}📄 Detalles del error:${RESET}"
+    cat /tmp/zivpn_spinner.log
+    exit 1
+  fi
+  rm -f /tmp/zivpn_spinner.log
+}
+
 # ╔════════════════════════════════════════════════════════════════╗
 print_section "🔍 VERIFICANDO INSTALACIÓN PREVIA DE ZIVPN UDP"
 if [ -f /usr/local/bin/zivpn ] || [ -f /etc/systemd/system/zivpn.service ]; then
@@ -32,8 +65,7 @@ fi
 
 # ╔════════════════════════════════════════════════════════════════╗
 print_section "📦 ACTUALIZANDO EL SISTEMA"
-echo -e "${CYAN}🔄 Actualizando paquetes del sistema...${RESET}"
-sudo apt-get update && sudo apt-get upgrade -y
+run_with_spinner "🔄 Actualizando paquetes del sistema" "sudo apt-get update && sudo apt-get upgrade -y"
 
 # ╔════════════════════════════════════════════════════════════════╗
 print_section "⬇️ DESCARGANDO ZIVPN UDP"
@@ -48,10 +80,7 @@ wget -q https://raw.githubusercontent.com/ChristopherAGT/zivpn-tunnel-udp/main/c
 
 # ╔════════════════════════════════════════════════════════════════╗
 print_section "🔐 GENERANDO CERTIFICADOS SSL"
-echo -e "${CYAN}🔐 Generando certificados SSL...${RESET}"
-openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
--subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=zivpn" \
--keyout "/etc/zivpn/zivpn.key" -out "/etc/zivpn/zivpn.crt"
+run_with_spinner "🔐 Generando certificados SSL" "openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj '/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=zivpn' -keyout /etc/zivpn/zivpn.key -out /etc/zivpn/zivpn.crt"
 
 # ╔════════════════════════════════════════════════════════════════╗
 print_section "⚙️ OPTIMIZANDO PARÁMETROS DEL SISTEMA"
@@ -93,14 +122,12 @@ read -p "🔐 Contraseñas (por defecto: zivpn): " input_config
 
 if [ -n "$input_config" ]; then
     IFS=',' read -r -a config <<< "$input_config"
-    # Por si sólo pusieron una contraseña la duplicamos para evitar error
     [ ${#config[@]} -eq 1 ] && config+=("${config[0]}")
 else
     config=("zivpn")
 fi
 
 new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
-# Corregimos la línea dentro del config.json (asegúrate que la expresión sed funcione correctamente)
 sed -i -E "s/\"config\": ?.*/${new_config_str}/g" /etc/zivpn/config.json
 
 # ╔════════════════════════════════════════════════════════════════╗
