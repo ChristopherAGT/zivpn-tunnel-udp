@@ -58,11 +58,18 @@ done
 remove_user() {
   list_users
   read -p "🔢 Ingrese el número del usuario a eliminar: " id
-  sel_pass=$(awk -F' | ' "NR==$id{print \$1}" "$USER_DB")
-  [ -z "$sel_pass" ] && echo -e "${RED}❌ ID inválido.${RESET}" && return
+
+  sel_pass=$(sed -n "${id}p" "$USER_DB" | cut -d'|' -f1 | xargs)
+
+  if [[ -z "$sel_pass" ]]; then
+    echo -e "${RED}❌ ID inválido.${RESET}"
+    return
+  fi
+
   cp "$CONFIG_FILE" "$BACKUP_FILE"
   jq --arg pw "$sel_pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
-  grep -v "^$sel_pass |" "$USER_DB" > temp && mv temp "$USER_DB"
+  grep -v -F -- "^$sel_pass |" "$USER_DB" > temp && mv temp "$USER_DB"
+
   echo -e "${GREEN}🗑️ Usuario eliminado exitosamente.${RESET}"
   systemctl restart zivpn.service
 }
