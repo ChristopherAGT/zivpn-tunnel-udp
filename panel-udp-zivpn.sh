@@ -1,193 +1,136 @@
 #!/bin/bash
 
-# ╔════════════════════════════════════════════════════════════╗
-# ║        🛡️ ZIVPN - PANEL DE GESTIÓN DE USUARIOS (PASS)      ║
-# ╚════════════════════════════════════════════════════════════╝
+# ╔════════════════════════════════════════════════════════════════════╗
+# ║             🧩 ZIVPN - PANEL DE USUARIOS UDP - v1.0                ║
+# ╚════════════════════════════════════════════════════════════════════╝
+
+# 📁 Rutas de archivos
+CONFIG_FILE="/etc/zivpn/config.json"
+USER_DB="/etc/zivpn/users.db"
+CONF_FILE="/etc/zivpn.conf"
 
 # 🎨 Colores
-RED="\e[31m"; GREEN="\e[32m"; YELLOW="\e[33m"; CYAN="\e[36m"; BLUE="\e[34m"; RESET="\e[0m"; BOLD="\e[1m"
+RED="\033[1;31m"
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+CYAN="\033[1;36m"
+RESET="\033[0m"
 
-# 📁 Archivos base
-DB="/etc/zivpn/usuarios.db"
-CONFIG="/etc/zivpn/config.json"
-AUTO_CLEAN_FILE="/etc/zivpn/auto-clean.conf"
+# 🛠️ Verifica dependencias
+command -v jq >/dev/null 2>&1 || { echo -e "${RED}❌ jq no está instalado. Instálalo con: apt install jq -y${RESET}"; exit 1; }
+
+# 🧠 Crea archivos si no existen
 mkdir -p /etc/zivpn
-[ ! -f "$DB" ] && touch "$DB"
-[ ! -f "$CONFIG" ] && echo '{"config":[]}' > "$CONFIG"
-[ ! -f "$AUTO_CLEAN_FILE" ] && echo "OFF" > "$AUTO_CLEAN_FILE"
+[ ! -f "$CONFIG_FILE" ] && echo '{"listen":":5667","cert":"/etc/zivpn/zivpn.crt","key":"/etc/zivpn/zivpn.key","obfs":"zivpn","auth":{"mode":"passwords","config":["zivpn"]}}' > "$CONFIG_FILE"
+[ ! -f "$USER_DB" ] && touch "$USER_DB"
+[ ! -f "$CONF_FILE" ] && echo 'AUTOCLEAN=OFF' > "$CONF_FILE"
 
-# 🔄 Actualiza config.json con usuarios activos
-actualizar_config() {
-    local config_list=()
-    local now=$(date +%s)
-    while IFS='|' read -r usuario exp; do
-        exp_ts=$(date -d "$exp" +%s 2>/dev/null)
-        [ "$exp_ts" -gt "$now" ] && config_list+=("\"$usuario\"")
-    done < "$DB"
-    echo -e "{\n  \"config\": [$(IFS=,; echo "${config_list[*]}")]\n}" > "$CONFIG"
-    systemctl restart zivpn.service &>/dev/null
+# 🔁 Cargar estado actual de autolimpieza
+source "$CONF_FILE"
+
+# 📦 Funciones principales
+add_user() {
+  read -p "🔐 Ingrese la nueva contraseña: " pass
+  grep -q "^$pass |" "$USER_DB" && { echo -e "${RED}❌ La contraseña ya existe.${RESET}"; return; }
+  read -p "📅 Días de expiración: " days
+  exp_date=$(date -d "+$days days" +%Y-%m-%d)
+  jq --arg pw "$pass" '.auth.config += [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
+  echo "$pass | $exp_date" >> "$USER_DB"
+  echo -e "${GREEN}✅ Usuario añadido con expiración: $exp_date${RESET}"
 }
 
-# 📋 Mostrar usuarios decorado
-mostrar_usuarios() {
-    echo -e "\n${CYAN}${BOLD}🔐 Usuarios actuales de ZIVPN:${RESET}"
-    printf "${BLUE}╔════════════╦═══════════════╦════════════╗\n"
-    printf "║  Usuario   ║  Expira       ║  Estado    ║\n"
-    printf "╠════════════╬═══════════════╬════════════╣${RESET}\n"
-    local now=$(date +%s)
-    while IFS='|' read -r usuario exp; do
-        exp_ts=$(date -d "$exp" +%s 2>/dev/null)
-        if [ "$exp_ts" -gt "$now" ]; then
-            estado="${GREEN}Activo${RESET}"
-        else
-            estado="${RED}Vencido${RESET}"
-        fi
-        printf "${BLUE}║ %-10s ║ %-13s ║ %-10s ║\n" "$usuario" "$exp" "$estado"
-    done < "$DB"
-    printf "${BLUE}╚════════════╩═══════════════╩════════════╝${RESET}\n\n"
+remove_user() {
+  list_users
+  read -p "🔢 Ingrese el número del usuario a eliminar: " id
+  sel_pass=$(awk -F' | ' "NR==$id{print \$1}" "$USER_DB")
+  [ -z "$sel_pass" ] && echo -e "${RED}❌ ID inválido.${RESET}" && return
+  jq --arg pw "$sel_pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
+  grep -v "^$sel_pass |" "$USER_DB" > temp && mv temp "$USER_DB"
+  echo -e "${GREEN}🗑️ Usuario eliminado exitosamente.${RESET}"
 }
 
-# ➕ Crear usuario
-crear_usuario() {
-    echo -e "${YELLOW}➕ Crear nuevo usuario (contraseña válida):${RESET}"
-    read -rp "👤 Usuario (será su contraseña): " usuario
-    [ -z "$usuario" ] && { echo -e "${RED}⚠️ El campo de usuario no puede estar vacío.${RESET}"; return; }
-
-    read -rp "⏳ Días de duración: " dias
-    [[ ! "$dias" =~ ^[0-9]+$ ]] && { echo -e "${RED}⚠️ Días debe ser un número.${RESET}"; return; }
-
-    exp=$(date -d "+$dias days" +"%Y-%m-%d")
-    cp "$DB" "$DB.bak"
-    echo "$usuario|$exp" >> "$DB"
-    [ "$(cat $AUTO_CLEAN_FILE)" == "ON" ] && limpiar_vencidos_silencioso
-    actualizar_config
-    echo -e "${GREEN}✅ Usuario '$usuario' creado, expira el $exp.${RESET}"
-    mostrar_usuarios
+renew_user() {
+  list_users
+  read -p "🔢 ID del usuario a renovar: " id
+  sel_pass=$(awk -F' | ' "NR==$id{print \$1}" "$USER_DB")
+  [ -z "$sel_pass" ] && echo -e "${RED}❌ ID inválido.${RESET}" && return
+  read -p "📅 Días adicionales: " days
+  old_exp=$(awk -F' | ' "\$1==\"$sel_pass\"{print \$3}" "$USER_DB")
+  new_exp=$(date -d "$old_exp +$days days" +%Y-%m-%d)
+  sed -i "s/^$sel_pass |.*/$sel_pass | $new_exp/" "$USER_DB"
+  echo -e "${GREEN}🔁 Usuario renovado hasta: $new_exp${RESET}"
 }
 
-# ❌ Remover usuario
-remover_usuario() {
-    mostrar_usuarios
-    echo -e "${YELLOW}❌ Ingrese el usuario a eliminar (0 para cancelar):${RESET}"
-    read -rp "🗑️ Usuario: " target
-    [ "$target" == "0" ] && return
-    if grep -q "^$target|" "$DB"; then
-        cp "$DB" "$DB.bak"
-        sed -i "/^$target|/d" "$DB"
-        actualizar_config
-        echo -e "${GREEN}✅ Usuario eliminado.${RESET}"
-    else
-        echo -e "${RED}⚠️ Usuario no encontrado.${RESET}"
+list_users() {
+  echo -e "\n${CYAN}📋 Lista de usuarios:${RESET}"
+  i=1
+  while IFS='|' read -r pass exp; do
+    printf "%s. %s%s%s  ⏳ %s\n" "$i" "$YELLOW" "$pass" "$RESET" "$exp"
+    ((i++))
+  done < "$USER_DB"
+  echo
+}
+
+clean_expired_users() {
+  today=$(date +%Y-%m-%d)
+  while IFS='|' read -r pass exp; do
+    if [[ "$exp" < "$today" ]]; then
+      jq --arg pw "$pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
+      sed -i "/^$pass |/d" "$USER_DB"
+      echo -e "${YELLOW}🧹 Usuario expirado eliminado: $pass${RESET}"
     fi
-    mostrar_usuarios
+  done < "$USER_DB"
 }
 
-# 🔁 Renovar usuario
-renovar_usuario() {
-    mostrar_usuarios
-    echo -e "${YELLOW}🔁 Ingrese el usuario a renovar:${RESET}"
-    read -rp "👤 Usuario: " target
-    if grep -q "^$target|" "$DB"; then
-        read -rp "📅 Nuevos días de duración: " dias
-        [[ ! "$dias" =~ ^[0-9]+$ ]] && { echo -e "${RED}⚠️ Días inválidos.${RESET}"; return; }
-        new_exp=$(date -d "+$dias days" +"%Y-%m-%d")
-        cp "$DB" "$DB.bak"
-        sed -i "/^$target|/d" "$DB"
-        echo "$target|$new_exp" >> "$DB"
-        [ "$(cat $AUTO_CLEAN_FILE)" == "ON" ] && limpiar_vencidos_silencioso
-        actualizar_config
-        echo -e "${GREEN}✅ Usuario renovado hasta $new_exp.${RESET}"
-    else
-        echo -e "${RED}⚠️ Usuario no encontrado.${RESET}"
-    fi
-    mostrar_usuarios
+toggle_autoclean() {
+  if [[ "$AUTOCLEAN" == "ON" ]]; then
+    echo "AUTOCLEAN=OFF" > "$CONF_FILE"
+    AUTOCLEAN=OFF
+  else
+    echo "AUTOCLEAN=ON" > "$CONF_FILE"
+    AUTOCLEAN=ON
+  fi
 }
 
-# 🧹 Limpiar vencidos (manual)
-limpiar_vencidos() {
-    local now=$(date +%s)
-    cp "$DB" "$DB.bak"
-    awk -F'|' -v now="$now" '{
-        cmd="date -d "$2" +%s"; cmd | getline t; close(cmd);
-        if(t>now) print
-    }' "$DB.bak" > "$DB"
-    actualizar_config
-    echo -e "${GREEN}🧹 Usuarios vencidos eliminados.${RESET}"
-}
+# ▶️ Control del servicio
+start_service() { systemctl start zivpn && echo -e "${GREEN}▶️ Servicio iniciado.${RESET}"; }
+stop_service() { systemctl stop zivpn && echo -e "${RED}⏹️ Servicio detenido.${RESET}"; }
+restart_service() { systemctl restart zivpn && echo -e "${YELLOW}🔁 Servicio reiniciado.${RESET}"; }
 
-# 🧹 Silencioso (auto-clean)
-limpiar_vencidos_silencioso() {
-    local now=$(date +%s)
-    awk -F'|' -v now="$now" '{
-        cmd="date -d "$2" +%s"; cmd | getline t; close(cmd);
-        if(t>now) print
-    }' "$DB" > "$DB.tmp" && mv "$DB.tmp" "$DB"
-}
-
-# ⚙️ Alternar limpieza automática
-toggle_auto_clean() {
-    estado=$(cat "$AUTO_CLEAN_FILE")
-    if [ "$estado" == "OFF" ]; then
-        echo "ON" > "$AUTO_CLEAN_FILE"
-        echo -e "${GREEN}✅ Limpieza automática activada.${RESET}"
-    else
-        echo "OFF" > "$AUTO_CLEAN_FILE"
-        echo -e "${YELLOW}🔕 Limpieza automática desactivada.${RESET}"
-    fi
-}
-
-# ▶️ Control de servicio
-iniciar_servicio() { systemctl start zivpn.service && echo -e "${GREEN}✅ Servicio iniciado.${RESET}" || echo -e "${RED}❌ Error al iniciar.${RESET}"; }
-reiniciar_servicio() { systemctl restart zivpn.service && echo -e "${GREEN}✅ Servicio reiniciado.${RESET}" || echo -e "${RED}❌ Error al reiniciar.${RESET}"; }
-detener_servicio() { systemctl stop zivpn.service && echo -e "${GREEN}✅ Servicio detenido.${RESET}" || echo -e "${RED}❌ Error al detener.${RESET}"; }
-
-# ⚠️ Aviso de vencidos
-vencidos=$(awk -F'|' -v now=$(date +%s) '{cmd="date -d "$2" +%s"; cmd | getline t; close(cmd); if(t<now) c++} END{print c}' "$DB")
-[ "$vencidos" -gt 0 ] && echo -e "${YELLOW}⚠️ Hay $vencidos usuario(s) vencido(s). Usa [8] para limpiarlos.${RESET}"
-
-# Estado de limpieza automática
-estado_clean=$(cat "$AUTO_CLEAN_FILE")
-estado_text=$([ "$estado_clean" == "ON" ] && echo "${GREEN}[ON]${RESET}" || echo "${RED}[OFF]${RESET}")
-
-# 🧭 Menú principal
+# 📺 Menú principal
 while true; do
-    echo -e "${BLUE}
-╔═══════════════════════════════════════════════════════╗
-║             🧩 ZIVPN - PANEL DE USUARIOS UDP           ║
-╠═══════════════════════════════════════════════════════╣
-║ [1] ➕ Crear nuevo usuario (con expiración)            ║
-║ [2] ❌ Remover usuario                                 ║
-║ [3] 🔁 Renovar usuario                                 ║
-║ [4] 📋 Información de los usuarios                     ║
-║ [5] ▶️ Iniciar servicio                                ║
-║ [6] 🔁 Reiniciar servicio                              ║
-║ [7] ⏹️ Detener servicio                               ║
-║ [8] 🧹 Eliminar usuarios vencidos   $estado_text         ║
-║ [9] 🚪 Salir                                           ║
-╚═══════════════════════════════════════════════════════╝${RESET}"
-    read -rp $'\n📤 Seleccione una opción [1-9]: ' opcion
-    case $opcion in
-        1) crear_usuario ;;
-        2) remover_usuario ;;
-        3) renovar_usuario ;;
-        4) mostrar_usuarios; read -rp "🔙 Presione Enter para volver al menú..." ;;
-        5) iniciar_servicio ;;
-        6) reiniciar_servicio ;;
-        7) detener_servicio ;;
-        8)
-            echo -e "\n${CYAN}¿Qué desea hacer con los usuarios vencidos?${RESET}"
-            echo "1) 🧹 Eliminar manualmente"
-            echo "2) 🔄 Alternar limpieza automática (ON/OFF)"
-            read -rp "Seleccione [1-2]: " subopt
-            case $subopt in
-                1) limpiar_vencidos ;;
-                2) toggle_auto_clean ;;
-                *) echo -e "${RED}❌ Opción inválida.${RESET}" ;;
-            esac
-            ;;
-        9) echo -e "${YELLOW}👋 Saliendo... Hasta pronto.${RESET}"; exit 0 ;;
-        *) echo -e "${RED}❌ Opción inválida.${RESET}" ;;
-    esac
-    estado_clean=$(cat "$AUTO_CLEAN_FILE")
-    estado_text=$([ "$estado_clean" == "ON" ] && echo "${GREEN}[ON]${RESET}" || echo "${RED}[OFF]${RESET}")
+  [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
+
+  echo -e "\n${CYAN}╔═══════════════════════════════════════════════════════╗"
+  echo -e "║             🧩 ZIVPN - PANEL DE USUARIOS UDP           ║"
+  echo -e "╠═══════════════════════════════════════════════════════╣"
+  echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)            ║"
+  echo -e "║ [2] ❌  Remover usuario                                 ║"
+  echo -e "║ [3] 🔁 Renovar usuario                                 ║"
+  echo -e "║ [4] 📋 Información de los usuarios                     ║"
+  echo -e "║ [5] ▶️ Iniciar servicio                                ║"
+  echo -e "║ [6] 🔁 Reiniciar servicio                              ║"
+  echo -e "║ [7] ⏹️ Detener servicio                               ║"
+  if [[ "$AUTOCLEAN" == "ON" ]]; then
+    echo -e "║ [8] 🧹 Eliminar usuarios vencidos     [${GREEN}ON${RESET}]        ║"
+  else
+    echo -e "║ [8] 🧹 Eliminar usuarios vencidos     [${RED}OFF${RESET}]       ║"
+  fi
+  echo -e "║ [9] 🚪 Salir                                           ║"
+  echo -e "╚═══════════════════════════════════════════════════════╝${RESET}"
+
+  read -p "📌 Seleccione una opción: " opc
+  case $opc in
+    1) add_user;;
+    2) remove_user;;
+    3) renew_user;;
+    4) list_users;;
+    5) start_service;;
+    6) restart_service;;
+    7) stop_service;;
+    8) toggle_autoclean;;
+    9) exit;;
+    *) echo -e "${RED}❌ Opción inválida.${RESET}";;
+  esac
+
 done
