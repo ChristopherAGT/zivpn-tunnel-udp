@@ -34,28 +34,45 @@ source "$CONF_FILE"
 
 # 📦 Funciones principales
 add_user() {
+  echo -e "${CYAN}⚠️  Ingrese '0' en cualquier momento para cancelar.${RESET}"
+
   # Solicitar contraseña y validar que no esté vacía ni exista ya
   while true; do
     read -p "🔐 Ingrese la nueva contraseña: " pass
+
+    if [[ "$pass" == "0" ]]; then
+      echo -e "${YELLOW}⚠️  Creación de usuario cancelada.${RESET}"
+      return
+    fi
+
     if [[ -z "$pass" ]]; then
       echo -e "${RED}❌ La contraseña no puede estar vacía.${RESET}"
       continue
     fi
+
     if jq -e --arg pw "$pass" '.auth.config | index($pw)' "$CONFIG_FILE" > /dev/null; then
       echo -e "${RED}❌ La contraseña ya existe.${RESET}"
       continue
     fi
+
     break
   done
 
   # Solicitar días de expiración y validar que sea número positivo
   while true; do
     read -p "📅 Días de expiración: " days
+
+    if [[ "$days" == "0" ]]; then
+      echo -e "${YELLOW}⚠️  Creación de usuario cancelada.${RESET}"
+      return
+    fi
+
     if [[ ! "$days" =~ ^[0-9]+$ ]] || [[ "$days" -le 0 ]]; then
       echo -e "${RED}❌ Ingrese un número válido y positivo.${RESET}"
-    else
-      break
+      continue
     fi
+
+    break
   done
 
   exp_date=$(date -d "+$days days" +%Y-%m-%d)
@@ -79,25 +96,45 @@ add_user() {
 }
 
 remove_user() {
+  echo -e "${CYAN}🗂️ Lista de usuarios actuales:${RESET}"
   list_users
-  read -p "🔢 Ingrese el número del usuario a eliminar: " id
+  
+  echo -e "\n🔢 Ingrese el número del usuario a eliminar o 0 para cancelar."
+  
+  while true; do
+    read -p "➡️ Selección: " id
+    
+    if [[ "$id" == "0" ]]; then
+      echo -e "${YELLOW}⚠️ Eliminación cancelada.${RESET}"
+      read -p "🔙 Presione Enter para volver al menú..."
+      return
+    fi
+    
+    # Validar que sea número y dentro del rango
+    if ! [[ "$id" =~ ^[0-9]+$ ]]; then
+      echo -e "${RED}❌ Por favor ingrese un número válido o 0 para cancelar.${RESET}"
+      continue
+    fi
 
-  sel_pass=$(sed -n "${id}p" "$USER_DB" | cut -d'|' -f1 | xargs)
+    sel_pass=$(sed -n "${id}p" "$USER_DB" | cut -d'|' -f1 | xargs)
 
-  if [[ -z "$sel_pass" ]]; then
-    echo -e "${RED}❌ ID inválido.${RESET}"
-    return
-  fi
+    if [[ -z "$sel_pass" ]]; then
+      echo -e "${RED}❌ ID inválido. Intente de nuevo o presione 0 para cancelar.${RESET}"
+      continue
+    fi
+
+    break
+  done
 
   cp "$CONFIG_FILE" "$BACKUP_FILE"
 
-  jq --arg pw "$sel_pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
-
-  sed -i "/^$sel_pass[[:space:]]*|/d" "$USER_DB"
-
-  echo -e "${GREEN}🗑️ Usuario eliminado exitosamente.${RESET}"
-
-  systemctl restart zivpn.service
+  if jq --arg pw "$sel_pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"; then
+    sed -i "/^$sel_pass[[:space:]]*|/d" "$USER_DB"
+    echo -e "${GREEN}🗑️ Usuario eliminado exitosamente.${RESET}"
+    systemctl restart zivpn.service
+  else
+    echo -e "${RED}❌ Error al eliminar usuario. No se realizaron cambios.${RESET}"
+  fi
 
   read -p "🔙 Presione Enter para volver al menú..."
 }
@@ -105,22 +142,29 @@ remove_user() {
 renew_user() {
   list_users
 
-  # Validar ID válido
   while true; do
-    read -p "🔢 ID del usuario a renovar: " id
+    read -p "🔢 ID del usuario a renovar (0 para cancelar): " id
+
+    if [[ "$id" == "0" ]]; then
+      echo -e "${YELLOW}⚠️ Renovación cancelada por el usuario.${RESET}"
+      return
+    fi
+
     if [[ ! "$id" =~ ^[0-9]+$ ]]; then
       echo -e "${RED}❌ Por favor ingrese un número válido.${RESET}"
-    else
-      sel_pass=$(sed -n "${id}p" "$USER_DB" | cut -d'|' -f1 | xargs)
-      if [[ -z "$sel_pass" ]]; then
-        echo -e "${RED}❌ ID inválido o no existe.${RESET}"
-      else
-        break
-      fi
+      continue
     fi
+
+    sel_pass=$(sed -n "${id}p" "$USER_DB" | cut -d'|' -f1 | xargs)
+
+    if [[ -z "$sel_pass" ]]; then
+      echo -e "${RED}❌ ID inválido o no existe. Intente de nuevo o presione 0 para cancelar.${RESET}"
+      continue
+    fi
+
+    break
   done
 
-  # Validar días adicionales
   while true; do
     read -p "📅 Días adicionales: " days
     if [[ ! "$days" =~ ^[0-9]+$ ]] || [[ "$days" -le 0 ]]; then
@@ -131,6 +175,7 @@ renew_user() {
   done
 
   old_exp=$(sed -n "/^$sel_pass[[:space:]]*|/p" "$USER_DB" | cut -d'|' -f2 | xargs)
+
   if [[ -z "$old_exp" ]]; then
     echo -e "${RED}❌ No se encontró la fecha de expiración para este usuario.${RESET}"
     return
@@ -138,7 +183,6 @@ renew_user() {
 
   new_exp=$(date -d "$old_exp +$days days" +%Y-%m-%d)
 
-  # Actualizar fecha en USER_DB
   sed -i "s/^$sel_pass[[:space:]]*|.*/$sel_pass | $new_exp/" "$USER_DB"
 
   echo -e "${GREEN}🔁 Usuario renovado hasta: $new_exp${RESET}"
