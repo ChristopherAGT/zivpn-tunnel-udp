@@ -21,10 +21,8 @@ actualizar_config() {
     local config_list=()
     local now=$(date +%s)
     while IFS='|' read -r usuario exp; do
-        exp_ts=$(date -d "$exp" +%s 2>/dev/null || echo 0)
-        if [ "$exp_ts" -gt "$now" ]; then
-            config_list+=("\"$usuario\"")
-        fi
+        exp_ts=$(date -d "$exp" +%s 2>/dev/null)
+        [ "$exp_ts" -gt "$now" ] && config_list+=("\"$usuario\"")
     done < "$DB"
     echo -e "{\n  \"config\": [$(IFS=,; echo "${config_list[*]}")]\n}" > "$CONFIG"
     systemctl restart zivpn.service &>/dev/null
@@ -34,11 +32,11 @@ actualizar_config() {
 mostrar_usuarios() {
     echo -e "\n${CYAN}${BOLD}🔐 Usuarios actuales de ZIVPN:${RESET}"
     printf "${BLUE}╔════════════╦═══════════════╦════════════╗\n"
-    printf "║  Usuario   ║   Expira      ║  Estado    ║\n"
+    printf "║  Usuario   ║  Expira       ║  Estado    ║\n"
     printf "╠════════════╬═══════════════╬════════════╣${RESET}\n"
     local now=$(date +%s)
     while IFS='|' read -r usuario exp; do
-        exp_ts=$(date -d "$exp" +%s 2>/dev/null || echo 0)
+        exp_ts=$(date -d "$exp" +%s 2>/dev/null)
         if [ "$exp_ts" -gt "$now" ]; then
             estado="${GREEN}Activo${RESET}"
         else
@@ -58,7 +56,7 @@ crear_usuario() {
     read -rp "⏳ Días de duración: " dias
     [[ ! "$dias" =~ ^[0-9]+$ ]] && { echo -e "${RED}⚠️ Días debe ser un número.${RESET}"; return; }
 
-    exp=$(date -d "+$dias days" +"%d-%m-%Y")
+    exp=$(date -d "+$dias days" +"%Y-%m-%d")
     cp "$DB" "$DB.bak"
     echo "$usuario|$exp" >> "$DB"
     [ "$(cat $AUTO_CLEAN_FILE)" == "ON" ] && limpiar_vencidos_silencioso
@@ -92,7 +90,7 @@ renovar_usuario() {
     if grep -q "^$target|" "$DB"; then
         read -rp "📅 Nuevos días de duración: " dias
         [[ ! "$dias" =~ ^[0-9]+$ ]] && { echo -e "${RED}⚠️ Días inválidos.${RESET}"; return; }
-        new_exp=$(date -d "+$dias days" +"%d-%m-%Y")
+        new_exp=$(date -d "+$dias days" +"%Y-%m-%d")
         cp "$DB" "$DB.bak"
         sed -i "/^$target|/d" "$DB"
         echo "$target|$new_exp" >> "$DB"
@@ -110,8 +108,8 @@ limpiar_vencidos() {
     local now=$(date +%s)
     cp "$DB" "$DB.bak"
     awk -F'|' -v now="$now" '{
-        "date -d \""$2"\" +%s" | getline t;
-        if (t > now) print
+        cmd="date -d "$2" +%s"; cmd | getline t; close(cmd);
+        if(t>now) print
     }' "$DB.bak" > "$DB"
     actualizar_config
     echo -e "${GREEN}🧹 Usuarios vencidos eliminados.${RESET}"
@@ -121,8 +119,8 @@ limpiar_vencidos() {
 limpiar_vencidos_silencioso() {
     local now=$(date +%s)
     awk -F'|' -v now="$now" '{
-        "date -d \""$2"\" +%s" | getline t;
-        if (t > now) print
+        cmd="date -d "$2" +%s"; cmd | getline t; close(cmd);
+        if(t>now) print
     }' "$DB" > "$DB.tmp" && mv "$DB.tmp" "$DB"
 }
 
@@ -144,10 +142,7 @@ reiniciar_servicio() { systemctl restart zivpn.service && echo -e "${GREEN}✅ S
 detener_servicio() { systemctl stop zivpn.service && echo -e "${GREEN}✅ Servicio detenido.${RESET}" || echo -e "${RED}❌ Error al detener.${RESET}"; }
 
 # ⚠️ Aviso de vencidos
-vencidos=$(awk -F'|' -v now=$(date +%s) '{
-    "date -d \""$2"\" +%s" | getline t;
-    if (t < now) c++
-} END{print c+0}' "$DB")
+vencidos=$(awk -F'|' -v now=$(date +%s) '{cmd="date -d "$2" +%s"; cmd | getline t; close(cmd); if(t<now) c++} END{print c}' "$DB")
 [ "$vencidos" -gt 0 ] && echo -e "${YELLOW}⚠️ Hay $vencidos usuario(s) vencido(s). Usa [8] para limpiarlos.${RESET}"
 
 # Estado de limpieza automática
