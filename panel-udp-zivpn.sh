@@ -253,7 +253,7 @@ echo -e "║                         📊 INFORMACIÓN                          
 echo -e "╠═════════════════════════════════════════════════════════════════╣"
 echo -e "║ IP: ${GREEN}${IP_MACHINE}${CYAN}          OS: ${GREEN}${OS_MACHINE}${CYAN}                ║"
 echo -e "║ Arquitectura: ${GREEN}${ARCH_DISPLAY}${CYAN}                                               ║"
-echo -e "║ Puerto: ${GREEN}${PORT}${CYAN}             Regla IPTABLES: ${GREEN}${PORT_RANGE}${CYAN}            ║"
+echo -e "║ Puerto: ${GREEN}${PORT}${CYAN}                  Regla IPTABLES: ${GREEN}${PORT_RANGE}${CYAN}            ║"
 echo -e "╠═════════════════════════════════════════════════════════════════╣"
 echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)                    ║"
 echo -e "║ [2] ❌  Remover usuario                                         ║"
