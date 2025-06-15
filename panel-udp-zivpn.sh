@@ -4,10 +4,11 @@
 # ║             🧩 ZIVPN - PANEL DE USUARIOS UDP - v1.0                ║
 # ╚════════════════════════════════════════════════════════════════════╝
 
-# 📁 Rutas de archivos
+# 📁 Archivos
 CONFIG_FILE="/etc/zivpn/config.json"
 USER_DB="/etc/zivpn/users.db"
 CONF_FILE="/etc/zivpn.conf"
+BACKUP_FILE="/etc/zivpn/config.json.bak"
 
 # 🎨 Colores
 RED="\033[1;31m"
@@ -16,24 +17,29 @@ YELLOW="\033[1;33m"
 CYAN="\033[1;36m"
 RESET="\033[0m"
 
-# 🛠️ Verifica dependencias
-command -v jq >/dev/null 2>&1 || { echo -e "${RED}❌ jq no está instalado. Instálalo con: apt install jq -y${RESET}"; exit 1; }
+# 🛠️ Dependencias
+command -v jq >/dev/null 2>&1 || { echo -e "${RED}❌ jq no está instalado. Usa: apt install jq -y${RESET}"; exit 1; }
 
-# 🧠 Crea archivos si no existen
+# 🧠 Crear archivos si no existen
 mkdir -p /etc/zivpn
 [ ! -f "$CONFIG_FILE" ] && echo '{"listen":":5667","cert":"/etc/zivpn/zivpn.crt","key":"/etc/zivpn/zivpn.key","obfs":"zivpn","auth":{"mode":"passwords","config":["zivpn"]}}' > "$CONFIG_FILE"
 [ ! -f "$USER_DB" ] && touch "$USER_DB"
 [ ! -f "$CONF_FILE" ] && echo 'AUTOCLEAN=OFF' > "$CONF_FILE"
 
-# 🔁 Cargar estado actual de autolimpieza
+# 🔁 Cargar configuración
 source "$CONF_FILE"
 
 # 📦 Funciones principales
+
 add_user() {
   read -p "🔐 Ingrese la nueva contraseña: " pass
-  grep -q "^$pass |" "$USER_DB" && { echo -e "${RED}❌ La contraseña ya existe.${RESET}"; return; }
+  if jq -e --arg pw "$pass" '.auth.config | index($pw)' "$CONFIG_FILE" > /dev/null; then
+    echo -e "${RED}❌ La contraseña ya existe.${RESET}"
+    return
+  fi
   read -p "📅 Días de expiración: " days
   exp_date=$(date -d "+$days days" +%Y-%m-%d)
+  cp "$CONFIG_FILE" "$BACKUP_FILE"
   jq --arg pw "$pass" '.auth.config += [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
   echo "$pass | $exp_date" >> "$USER_DB"
   echo -e "${GREEN}✅ Usuario añadido con expiración: $exp_date${RESET}"
@@ -44,6 +50,7 @@ remove_user() {
   read -p "🔢 Ingrese el número del usuario a eliminar: " id
   sel_pass=$(awk -F' | ' "NR==$id{print \$1}" "$USER_DB")
   [ -z "$sel_pass" ] && echo -e "${RED}❌ ID inválido.${RESET}" && return
+  cp "$CONFIG_FILE" "$BACKUP_FILE"
   jq --arg pw "$sel_pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
   grep -v "^$sel_pass |" "$USER_DB" > temp && mv temp "$USER_DB"
   echo -e "${GREEN}🗑️ Usuario eliminado exitosamente.${RESET}"
@@ -73,13 +80,17 @@ list_users() {
 
 clean_expired_users() {
   today=$(date +%Y-%m-%d)
+  updated=0
+  cp "$CONFIG_FILE" "$BACKUP_FILE"
   while IFS='|' read -r pass exp; do
     if [[ "$exp" < "$today" ]]; then
       jq --arg pw "$pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
       sed -i "/^$pass |/d" "$USER_DB"
       echo -e "${YELLOW}🧹 Usuario expirado eliminado: $pass${RESET}"
+      updated=1
     fi
   done < "$USER_DB"
+  [[ $updated -eq 1 ]] && echo -e "${GREEN}✅ Limpieza finalizada.${RESET}"
 }
 
 toggle_autoclean() {
@@ -92,9 +103,9 @@ toggle_autoclean() {
   fi
 }
 
-# ▶️ Control del servicio
+# ▶️ Servicio
 start_service() { systemctl start zivpn && echo -e "${GREEN}▶️ Servicio iniciado.${RESET}"; }
-stop_service() { systemctl stop zivpn && echo -e "${RED}⏹️ Servicio detenido.${RESET}"; }
+stop_service()  { systemctl stop zivpn && echo -e "${RED}⏹️ Servicio detenido.${RESET}"; }
 restart_service() { systemctl restart zivpn && echo -e "${YELLOW}🔁 Servicio reiniciado.${RESET}"; }
 
 # 📺 Menú principal
@@ -132,5 +143,4 @@ while true; do
     9) exit;;
     *) echo -e "${RED}❌ Opción inválida.${RESET}";;
   esac
-
 done
