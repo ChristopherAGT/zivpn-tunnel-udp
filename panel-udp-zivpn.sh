@@ -92,7 +92,7 @@ list_users() {
       status="🟢 ACTIVO"
     fi
 
-    printf "${CYAN}║ %2s ║ ${YELLOW}%-20s${CYAN} ║ ${YELLOW}%-16s${CYAN} ║ ${YELLOW}%-14s${CYAN}       ║${RESET}\n" "$i" "$pass" "$exp" "$status"
+    printf "${CYAN}║ %2s ║ ${YELLOW}%-20s${CYAN} ║ ${YELLOW}%-16s${CYAN} ║ ${YELLOW}%-14s${CYAN}     ║${RESET}\n" "$i" "$pass" "$exp" "$status"
     ((i++))
   done < "$USER_DB"
 
