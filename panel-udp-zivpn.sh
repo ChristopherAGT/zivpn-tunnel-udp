@@ -115,13 +115,13 @@ while true; do
   echo -e "\n${CYAN}╔═══════════════════════════════════════════════════════╗"
   echo -e "║             🧩 ZIVPN - PANEL DE USUARIOS UDP           ║"
   echo -e "╠═══════════════════════════════════════════════════════╣"
-  echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)            ║"
-  echo -e "║ [2] ❌  Remover usuario                                 ║"
+  echo -e "║ [1] ➕ Crear nuevo usuario (con expiración)            ║"
+  echo -e "║ [2] ❌ Remover usuario                                 ║"
   echo -e "║ [3] 🔁 Renovar usuario                                 ║"
   echo -e "║ [4] 📋 Información de los usuarios                     ║"
   echo -e "║ [5] ▶️ Iniciar servicio                                ║"
   echo -e "║ [6] 🔁 Reiniciar servicio                              ║"
-  echo -e "║ [7] ⏹️ Detener servicio                               ║"
+  echo -e "║ [7] ⏹️ Detener servicio                                ║"
   if [[ "$AUTOCLEAN" == "ON" ]]; then
     echo -e "║ [8] 🧹 Eliminar usuarios vencidos     [${GREEN}ON${RESET}]        ║"
   else
