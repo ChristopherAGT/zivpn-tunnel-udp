@@ -10,6 +10,7 @@
 GREEN="\e[32m"
 YELLOW="\e[33m"
 CYAN="\e[36m"
+RED="\e[31m"
 RESET="\e[0m"
 
 # ╔════════════════════════════════════════════════════════════╗
@@ -47,8 +48,11 @@ sysctl -w net.core.wmem_max=16777216 &>/dev/null
 # ╔════════════════════════════════════════════════════════════╗
 # ║  🧩 CREANDO SERVICIO SYSTEMD                               ║
 # ╚════════════════════════════════════════════════════════════╝
-echo -e "${CYAN}🔧 Configurando servicio systemd...${RESET}"
-cat <<EOF > /etc/systemd/system/zivpn.service
+if [ -f /etc/systemd/system/zivpn.service ]; then
+    echo -e "${YELLOW}⚠️ El servicio ZIVPN ya existe. Se omitirá su creación.${RESET}"
+else
+    echo -e "${CYAN}🔧 Configurando servicio systemd...${RESET}"
+    cat <<EOF > /etc/systemd/system/zivpn.service
 [Unit]
 Description=ZIVPN UDP VPN Server
 After=network.target
@@ -68,22 +72,23 @@ NoNewPrivileges=true
 [Install]
 WantedBy=multi-user.target
 EOF
+fi
 
 # ╔════════════════════════════════════════════════════════════╗
 # ║  🔑 CONFIGURANDO CONTRASEÑAS                               ║
 # ╚════════════════════════════════════════════════════════════╝
 echo -e "${YELLOW}🔑 Ingresa las contraseñas separadas por comas (Ej: pass1,pass2)"
-read -p "🔐 Contraseñas (por defecto: zi): " input_config
+read -p "🔐 Contraseñas (por defecto: zivpn): " input_config
 
 if [ -n "$input_config" ]; then
     IFS=',' read -r -a config <<< "$input_config"
     [ ${#config[@]} -eq 1 ] && config+=(${config[0]})
 else
-    config=("zi")
+    config=("zivpn")
 fi
 
 new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
-sed -i -E "s/\"config\": ?[[:space:]]*\"zi\"[[:space:]]*/${new_config_str}/g" /etc/zivpn/config.json
+sed -i -E "s/\"config\": ?.*/${new_config_str}/g" /etc/zivpn/config.json
 
 # ╔════════════════════════════════════════════════════════════╗
 # ║  🚀 INICIANDO Y HABILITANDO SERVICIO                       ║
@@ -95,12 +100,17 @@ systemctl start zivpn.service
 # ║  🌐 CONFIGURANDO IPTABLES Y FIREWALL                       ║
 # ╚════════════════════════════════════════════════════════════╝
 iface=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)
-iptables -t nat -A PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+if ! iptables -t nat -C PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667 &>/dev/null; then
+    iptables -t nat -A PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+else
+    echo -e "${YELLOW}⚠️ La regla iptables ya existe. Se omite agregarla nuevamente.${RESET}"
+fi
+
 ufw allow 6000:19999/udp
 ufw allow 5667/udp
 
 # ╔════════════════════════════════════════════════════════════╗
 # ║  ✅ FINALIZADO                                             ║
 # ╚════════════════════════════════════════════════════════════╝
-rm -f zi.* &>/dev/null
+rm -f install-amd.sh install-amd.tmp install-amd.log &>/dev/null
 echo -e "${GREEN}✅ ZIVPN UDP instalado correctamente.${RESET}"
