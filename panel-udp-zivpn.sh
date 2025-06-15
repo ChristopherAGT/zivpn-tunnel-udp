@@ -41,7 +41,7 @@ add_user() {
     read -p "🔐 Ingrese la nueva contraseña: " pass
 
     if [[ "$pass" == "0" ]]; then
-      echo -e "${YELLOW}⚠️  Creación de usuario cancelada.${RESET}"
+      echo -e "${YELLOW}⚠️  Creación cancelada.${RESET}"
       return
     fi
 
@@ -99,7 +99,7 @@ remove_user() {
   echo -e "${CYAN}🗂️ Lista de usuarios actuales:${RESET}"
   list_users
   
-  echo -e "\n🔢 Ingrese el número del usuario a eliminar o 0 para cancelar."
+  echo -e "\n🔢 Ingrese el ID del usuario a eliminar (0 para cancelar)."
   
   while true; do
     read -p "➡️ Selección: " id
@@ -144,9 +144,10 @@ renew_user() {
 
   while true; do
     read -p "🔢 ID del usuario a renovar (0 para cancelar): " id
+    id=$(echo "$id" | xargs)  # Elimina espacios
 
     if [[ "$id" == "0" ]]; then
-      echo -e "${YELLOW}⚠️ Renovación cancelada por el usuario.${RESET}"
+      echo -e "${YELLOW}⚠️ Renovación cancelada.${RESET}"
       return
     fi
 
