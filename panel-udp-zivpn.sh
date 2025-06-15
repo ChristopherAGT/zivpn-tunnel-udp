@@ -92,7 +92,7 @@ list_users() {
       status="🟢 ACTIVO"
     fi
 
-    printf "${CYAN}║ %2s ║ ${YELLOW}%-20s${CYAN} ║ ${YELLOW}%-16s${CYAN} ║ ${YELLOW}%-14s${CYAN} ║${RESET}\n" "$i" "$pass" "$exp" "$status"
+    printf "${CYAN}║ %2s ║ ${YELLOW}%-20s${CYAN} ║ ${YELLOW}%-16s${CYAN} ║ ${YELLOW}%-14s${CYAN}       ║${RESET}\n" "$i" "$pass" "$exp" "$status"
     ((i++))
   done < "$USER_DB"
 
@@ -138,7 +138,7 @@ while true; do
   [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
 
   echo -e "\n${CYAN}╔══════════════════════════════════════════════════════════════════════╗"
-  echo -e "║                   🧩 ZIVPN - PANEL DE USUARIOS-UDP                   ║"
+  echo -e "║                   🧩 ZIVPN - PANEL DE USUARIOS UDP                   ║"
   echo -e "╠══════════════════════════════════════════════════════════════════════╣"
   echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)                         ║"
   echo -e "║ [2] ❌  Remover usuario                                              ║"
