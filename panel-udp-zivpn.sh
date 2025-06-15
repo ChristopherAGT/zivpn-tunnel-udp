@@ -69,13 +69,28 @@ renew_user() {
 }
 
 list_users() {
-  echo -e "\n${CYAN}📋 Lista de usuarios:${RESET}"
+  echo -e "\n${CYAN}📋 LISTA DE USUARIOS REGISTRADOS${RESET}"
+  echo -e "${CYAN}╔════╦════════════════════╦═══════════════╦══════════════╗${RESET}"
+  echo -e "${CYAN}║ ID ║     CONTRASEÑA     ║   EXPIRA      ║   ESTADO     ║${RESET}"
+  echo -e "${CYAN}╠════╬════════════════════╬═══════════════╬══════════════╣${RESET}"
+
   i=1
+  today=$(date +%Y-%m-%d)
   while IFS='|' read -r pass exp; do
-    printf "%s. %s%s%s  ⏳ %s\n" "$i" "$YELLOW" "$pass" "$RESET" "$exp"
+    pass=$(echo "$pass" | xargs)
+    exp=$(echo "$exp" | xargs)
+
+    if [[ "$exp" < "$today" ]]; then
+      status="${RED}🔴 VENCIDO${RESET}"
+    else
+      status="${GREEN}🟢 ACTIVO${RESET}"
+    fi
+
+    printf "${CYAN}║%3s ${CYAN}║ ${YELLOW}%-18s${CYAN} ║ ${YELLOW}%-13s${CYAN} ║ %-12b${CYAN}║${RESET}\n" "$i" "$pass" "$exp" "$status"
     ((i++))
   done < "$USER_DB"
-  echo
+
+  echo -e "${CYAN}╚════╩════════════════════╩═══════════════╩══════════════╝${RESET}\n"
 }
 
 clean_expired_users() {
@@ -115,13 +130,13 @@ while true; do
   echo -e "\n${CYAN}╔═══════════════════════════════════════════════════════╗"
   echo -e "║             🧩 ZIVPN - PANEL DE USUARIOS UDP           ║"
   echo -e "╠═══════════════════════════════════════════════════════╣"
-  echo -e "║ [1] ➕ Crear nuevo usuario (con expiración)            ║"
-  echo -e "║ [2] ❌ Remover usuario                                 ║"
+  echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)            ║"
+  echo -e "║ [2] ❌  Remover usuario                                 ║"
   echo -e "║ [3] 🔁 Renovar usuario                                 ║"
   echo -e "║ [4] 📋 Información de los usuarios                     ║"
   echo -e "║ [5] ▶️ Iniciar servicio                                ║"
   echo -e "║ [6] 🔁 Reiniciar servicio                              ║"
-  echo -e "║ [7] ⏹️ Detener servicio                                ║"
+  echo -e "║ [7] ⏹️ Detener servicio                               ║"
   if [[ "$AUTOCLEAN" == "ON" ]]; then
     echo -e "║ [8] 🧹 Eliminar usuarios vencidos     [${GREEN}ON${RESET}]        ║"
   else
