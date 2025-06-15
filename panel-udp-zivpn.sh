@@ -170,7 +170,6 @@ list_users() {
 }
 
 clean_expired_users() {
-clean_expired_users() {
   local today=$(date +%Y-%m-%d)
   local updated=0
   local expired=()
