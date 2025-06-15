@@ -49,6 +49,15 @@ mostrar_puertos_zivpn() {
 }
 
 # ╔══════════════════════════════════════════════════╗
+# ║ 🔍 FUNCIÓN: Mostrar puerto fijo e iptables       ║
+# ╚══════════════════════════════════════════════════╝
+mostrar_puerto_iptables() {
+  local PUERTO="5667"
+  local IPTABLES="6000-19999"
+  echo -e " ${YELLOW}📛 Puerto:${RESET} ${GREEN}$PUERTO${RESET}   ${RED}🔥 Iptables:${RESET} ${CYAN}$IPTABLES${RESET}"
+}
+
+# ╔══════════════════════════════════════════════════╗
 # ║ 🔍 FUNCIÓN: Mostrar estado del servicio ZIVPN    ║
 # ╚══════════════════════════════════════════════════╝
 mostrar_estado_servicio() {
@@ -56,9 +65,10 @@ mostrar_estado_servicio() {
     systemctl is-active --quiet zivpn.service
     if [ $? -eq 0 ]; then
       echo -e " 🟢 Servicio ZIVPN UDP instalado y activo"
-      mostrar_puertos_zivpn
+      mostrar_puerto_iptables
     else
       echo -e " 🟡 Servicio ZIVPN UDP instalado pero ${YELLOW}no activo${RESET}"
+      mostrar_puerto_iptables
     fi
   else
     echo -e " 🔴 Servicio ZIVPN UDP ${RED}no instalado${RESET}"
