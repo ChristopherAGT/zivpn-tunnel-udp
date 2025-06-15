@@ -229,9 +229,32 @@ toggle_autoclean() {
 }
 
 # ▶️ Servicio
-start_service()    { systemctl start zivpn.service && echo -e "${GREEN}▶️ Servicio iniciado.${RESET}"; }
-stop_service()     { systemctl stop zivpn.service && echo -e "${RED}⏹️ Servicio detenido.${RESET}"; }
-restart_service()  { systemctl restart zivpn.service && echo -e "${YELLOW}🔁 Servicio reiniciado.${RESET}"; }
+start_service() {
+  if systemctl start zivpn.service; then
+    echo -e "${GREEN}▶️ Servicio iniciado.${RESET}"
+  else
+    echo -e "${RED}❌ Error al iniciar el servicio.${RESET}"
+  fi
+  read -rp "🔙 Presione Enter para volver al menú..."
+}
+
+stop_service() {
+  if systemctl stop zivpn.service; then
+    echo -e "${RED}⏹️ Servicio detenido.${RESET}"
+  else
+    echo -e "${RED}❌ Error al detener el servicio.${RESET}"
+  fi
+  read -rp "🔙 Presione Enter para volver al menú..."
+}
+
+restart_service() {
+  if systemctl restart zivpn.service; then
+    echo -e "${YELLOW}🔁 Servicio reiniciado.${RESET}"
+  else
+    echo -e "${RED}❌ Error al reiniciar el servicio.${RESET}"
+  fi
+  read -rp "🔙 Presione Enter para volver al menú..."
+}
 
 # 📺 Menú principal
 while true; do
