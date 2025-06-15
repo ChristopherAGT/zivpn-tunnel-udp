@@ -170,21 +170,47 @@ list_users() {
 }
 
 clean_expired_users() {
-  today=$(date +%Y-%m-%d)
-  updated=0
+clean_expired_users() {
+  local today=$(date +%Y-%m-%d)
+  local updated=0
+  local expired=()
+
   cp "$CONFIG_FILE" "$BACKUP_FILE"
+
   while IFS='|' read -r pass exp; do
+    pass=$(echo "$pass" | xargs)
+    exp=$(echo "$exp" | xargs)
     if [[ "$exp" < "$today" ]]; then
-      jq --arg pw "$pass" '.auth.config -= [$pw]' "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"
-      sed -i "/^$pass |/d" "$USER_DB"
-      echo -e "${YELLOW}🧹 Usuario expirado eliminado: $pass${RESET}"
-      updated=1
+      expired+=("$pass")
     fi
   done < "$USER_DB"
-  [[ $updated -eq 1 ]] && {
-    echo -e "${GREEN}✅ Limpieza finalizada.${RESET}"
-    systemctl restart zivpn.service
-  }
+
+  if [[ ${#expired[@]} -eq 0 ]]; then
+    echo -e "${GREEN}✅ No hay usuarios expirados para eliminar.${RESET}"
+    return
+  fi
+
+  # Actualizar config.json eliminando todos los usuarios expirados de una vez
+  local jq_filter='.'
+  for pw in "${expired[@]}"; do
+    jq_filter+=" | del(.auth.config[] | select(. == \"$pw\"))"
+  done
+
+  if ! jq "$jq_filter" "$CONFIG_FILE" > temp && mv temp "$CONFIG_FILE"; then
+    echo -e "${RED}❌ Error al actualizar $CONFIG_FILE con jq.${RESET}"
+    return 1
+  fi
+
+  # Eliminar usuarios expirados de USER_DB de forma segura
+  local temp_db=$(mktemp)
+  grep -v -F -f <(printf '%s\n' "${expired[@]}") "$USER_DB" > "$temp_db" && mv "$temp_db" "$USER_DB"
+
+  for u in "${expired[@]}"; do
+    echo -e "${YELLOW}🧹 Usuario expirado eliminado: $u${RESET}"
+  done
+
+  systemctl restart zivpn.service
+  echo -e "${GREEN}✅ Limpieza finalizada y servicio reiniciado.${RESET}"
 }
 
 toggle_autoclean() {
