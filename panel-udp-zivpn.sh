@@ -231,37 +231,55 @@ restart_service()  { systemctl restart zivpn.service && echo -e "${YELLOW}🔁 S
 while true; do
   clear  # ✅ Limpia la pantalla en cada iteración del menú
 
-  [[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
+[[ "$AUTOCLEAN" == "ON" ]] && clean_expired_users > /dev/null
 
-  echo -e "\n${CYAN}╔═════════════════════════════════════════════════════════════════╗"
-  echo -e "║                🧩 ZIVPN - PANEL DE USUARIOS UDP                 ║"
-  echo -e "╠═════════════════════════════════════════════════════════════════╣"
-  echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)                    ║"
-  echo -e "║ [2] ❌  Remover usuario                                         ║"
-  echo -e "║ [3] 🗓  Renovar usuario                                         ║"
-  echo -e "║ [4] 📋  Información de los usuarios                             ║"
-  echo -e "║ [5] ▶️  Iniciar servicio                                        ║"
-  echo -e "║ [6] 🔁  Reiniciar servicio                                      ║"
-  echo -e "║ [7] ⏹️  Detener servicio                                        ║"
-  if [[ "$AUTOCLEAN" == "ON" ]]; then
-    echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${GREEN}ON${RESET}]              ║"
-  else
-    echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${RED}OFF${RESET}]             ║"
-  fi
-  echo -e "║ [9] 🚪  Salir                                                   ║"
-  echo -e "╚═════════════════════════════════════════════════════════════════╝${RESET}"
+# Obtener datos reales
+IP_MACHINE=$(hostname -I | awk '{print $1}')
+OS_MACHINE=$(grep -oP '^PRETTY_NAME="\K[^"]+' /etc/os-release)
+ARCH_MACHINE=$(uname -m)
+# Normalizar arquitectura para mostrar AMD o ARM
+if [[ "$ARCH_MACHINE" =~ "arm" || "$ARCH_MACHINE" =~ "aarch" ]]; then
+  ARCH_DISPLAY="ARM"
+else
+  ARCH_DISPLAY="AMD"
+fi
+PORT="5667"
+PORT_RANGE="6000-19999"
 
-  read -p "📌 Seleccione una opción: " opc
-  case $opc in
-    1) add_user;;
-    2) remove_user;;
-    3) renew_user;;
-    4) list_users true;;
-    5) start_service;;
-    6) restart_service;;
-    7) stop_service;;
-    8) toggle_autoclean;;
-    9) exit;;
-    *) echo -e "${RED}❌ Opción inválida.${RESET}";;
-  esac
-done
+echo -e "\n${CYAN}╔═════════════════════════════════════════════════════════════════╗"
+echo -e "║                🧩 ZIVPN - PANEL DE USUARIOS UDP                 ║"
+echo -e "╠═════════════════════════════════════════════════════════════════╣"
+echo -e "║                         📊 INFORMACIÓN                          ║"
+echo -e "╠═════════════════════════════════════════════════════════════════╣"
+echo -e "║ IP: ${GREEN}${IP_MACHINE}${CYAN}          OS: ${GREEN}${OS_MACHINE}${CYAN}             ║"
+echo -e "║ Arquitectura: ${GREEN}${ARCH_DISPLAY}${CYAN}           Puerto: ${GREEN}${PORT}${CYAN}             ║"
+echo -e "║ Regla IPTABLES: ${GREEN}${PORT_RANGE}${CYAN}                                     ║"
+echo -e "╠═════════════════════════════════════════════════════════════════╣"
+echo -e "║ [1] ➕  Crear nuevo usuario (con expiración)                    ║"
+echo -e "║ [2] ❌  Remover usuario                                         ║"
+echo -e "║ [3] 🗓  Renovar usuario                                         ║"
+echo -e "║ [4] 📋  Información de los usuarios                             ║"
+echo -e "║ [5] ▶️  Iniciar servicio                                        ║"
+echo -e "║ [6] 🔁  Reiniciar servicio                                      ║"
+echo -e "║ [7] ⏹️  Detener servicio                                        ║"
+if [[ "$AUTOCLEAN" == "ON" ]]; then
+  echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${GREEN}ON${CYAN}]              ║"
+else
+  echo -e "║ [8] 🧹  Eliminar usuarios vencidos            [${RED}OFF${CYAN}]             ║"
+fi
+echo -e "║ [9] 🚪  Salir                                                   ║"
+echo -e "╚═════════════════════════════════════════════════════════════════╝${RESET}"
+
+read -p "📌 Seleccione una opción: " opc
+case $opc in
+  1) add_user;;
+  2) remove_user;;
+  3) renew_user;;
+  4) list_users true;;
+  5) start_service;;
+  6) restart_service;;
+  7) stop_service;;
+  8) toggle_autoclean;;
+  9) exit;;
+  *) echo -e "${RED}❌ Opción inválida.${RESET}";;
+esac
